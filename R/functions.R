@@ -1078,7 +1078,7 @@ cnEmission <- function(object, hmmOptions){
 	if(all(is.na(cn.conf))){
 		message("cnConfidence missing.  Using MAD")
 		autosome.index <- which(chromosome(object) < 23)
-		sds <- apply(CN[autosome.index, ], 2, mad, na.rm=TRUE)
+		sds <- apply(CN[autosome.index, , drop=FALSE], 2, mad, na.rm=TRUE)
 		##sds <- robustSds2(copyNumber(object))
 		sds <- matrix(sds, nrow(CN), ncol(CN), byrow=TRUE)
 		##cnConfidence(object) <- 1/sds
@@ -1135,15 +1135,19 @@ gtEmission <- function(object, hmmOptions){
 		GT <- calls(object)
 		emission <- array(GT, dim=c(nrow(GT), ncol(GT), length(states)), dimnames=list(featureNames(object), sampleNames(object), states))
 		missingGT <- any(is.na(GT))
-		if(missingGT){
-			if(verbose==2) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
-		}
+##		if(missingGT){
+##			if(verbose==2) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
+##		}
 		for(s in seq(along=states)){
 			tmp <- GT
 			tmp[tmp == 1 | tmp == 3] <- p[s]
 			tmp[tmp == 2] <- 1-p[s]
+			index1 <- is.na(tmp) & !isSnp(object)
+			index2 <- is.na(tmp) & isSnp(object)
 			if(missingGT){
-				tmp[is.na(tmp)] <- prGenotypeMissing[s]
+				tmp[index2] <- prGenotypeMissing[s]
+				## use uniform for nonpolymorphic
+				tmp[index1] <- 1/length(states)
 			}
 			emission[, , s] <- tmp
 		}

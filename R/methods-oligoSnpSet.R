@@ -31,6 +31,10 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  warning("NA's in annotation -- check chromosome or position. Ignoring markers with missing annotation")
 			  object <- object[-naindex, ]
 		  }
+		  missingGT <- any(is.na(calls(object)))
+		  if(missingGT){
+			  if(v2 > 0) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
+		  }
 		  if(is.null(markerIndex(hmm.params))){
 			  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
 			  chromosomes <- unique(chromosome(object))

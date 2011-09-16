@@ -183,7 +183,7 @@ hmmOpts <- hmm.setup(oligoSet,
 
 \noindent The viterbi algorithm is used to obtain the most likely
 sequence of hidden states given the observed data.  For efficiency, we
-return an object of class \Robject{RangedData} with genomic coordinates
+return an object of class \Robject{RangedDataHMM} with genomic coordinates
 of the normal and altered regions.  We also return the log-likelihood
 ratio (LLR) of the predicted sequence in an interval versus the null of
 normal copy number. For intervals with typical copy number (2) and
@@ -191,9 +191,10 @@ percent heterozygosity (the 3rd state in the above codechunk), the LLR
 is zero.
 
 <<fit_van>>=
+## first 2 chromosomes
+oligoSet <- oligoSet[chromosome(oligoSet) <= 2, ]
 fit.van <- hmm(oligoSet, hmmOpts)
 @
-
 
 
 <<fig2, fig=TRUE, width=8, echo=FALSE>>=
@@ -222,8 +223,6 @@ legend("topleft", fill=cols, legend=hmmOpts$states, bty="n")
 
 \subsection{ICE HMM}
 
-
-
 To compute emission probabilities that incorporate the \Rpackage{crlmm}
 genotype confidence scores, (i) set \Robject{ICE} to \texttt{TRUE} in
 the \Robject{hmm.setup} function and (ii) indicate which of the states
@@ -237,7 +236,6 @@ hmmOpts <- hmm.setup(oligoSet,
 		     normalIndex=3,
 		     log.initialP=rep(log(1/4), 4),
 		     rohStates=c(TRUE, TRUE, FALSE, FALSE))
-
 fit.ice <- hmm(oligoSet, hmmOpts)
 @
 
@@ -274,6 +272,7 @@ cnSet <- new("CopyNumberSet",
 	     annotation=locusLevelData[["platform"]])
 cnSet <- cnSet[order(chromosome(cnSet), position(cnSet)), ]
 cnSet <- cnSet[!is.na(chromosome(cnSet)), ]
+cnSet <- cnSet[chromosome(cnSet) <= 2, ]
 hmmOpts <- hmm.setup(cnSet,
 		      copynumberStates=log2(c(0, 1, 2, 3)),
 		      states=c("hom-del", "hem-del", "normal", "amp"),
@@ -281,26 +280,6 @@ hmmOpts <- hmm.setup(cnSet,
 		      log.initialP=rep(log(1/4), 4))
 fit.cn <- hmm(cnSet, hmmOpts)
 @
-
-%<<fig4, fig=TRUE, width=8>>=
-%fit.chr1 <- fit.cn[space(fit.cn)=="chr1", ]
-%widths <- width(fit.chr1)
-%fit.chr1 <- fit.chr1[order(widths,decreasing=TRUE),]
-%par(las=1)
-%plot(position(chr1), copyNumber(chr1), pch=".", ylab="log2 copy number", xlab="physical position", cex=2, col="royalblue")
-%points(position(chr1)[isHet], copyNumber(chr1)[isHet], col="red", pch=".", cex=2)
-%abline(h=log2(1:3), col="grey70")
-%sts <- start(fit.chr1); ends <- end(fit.chr1)
-%xx <- range(c(sts,ends))
-%y <- c(-1,-1,-0.9,-0.9)
-%polygon(x=c(xx, rev(xx)), y=y, col="white")
-%for(i in 1:nrow(fit.chr1)){
-%	polygon(x=c(sts[i], ends[i], ends[i], sts[i]),
-%		y=y, col=cols[fit.chr1$state[i]],
-%		border=cols[fit.chr1$state[i]])
-%}
-%legend("topleft", fill=cols, legend=hmmOpts$states, bty="n")
-%@
 
 \paragraph{Regions of homozygosity.}
 %\subsection{Region of homozygosity (ROH) HMM}
