@@ -3,6 +3,7 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  log.beta.cn <- cnEmission(object, hmm.params)
 		  log.beta.gt <- gtEmission(object, hmm.params)
 		  ##log.emission <- emit(object, hmm.params)
+
 		  log.beta <- log.beta.cn+log.beta.gt
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
@@ -25,6 +26,11 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  res <- vector("list", ncol(object))
 		  v2 <- verbose(hmm.params)
+		  naindex <- which(is.na(chromosome(object)) | is.na(position(object)))
+		  if(length(naindex) > 0){
+			  warning("NA's in annotation -- check chromosome or position. Ignoring markers with missing annotation")
+			  object <- object[-naindex, ]
+		  }
 		  if(is.null(markerIndex(hmm.params))){
 			  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
 			  chromosomes <- unique(chromosome(object))

@@ -205,16 +205,27 @@ viterbi <- function(object,
 	c1 <- normal2altered
 	c2 <- altered2normal
 	c3 <- altered2altered
-	TT <- nrow(object)
+	##TT <- nrow(object)
+	index <- which(!is.na(arm))
+	arm <- arm[index]
+	TT <- length(index)
+	log.E <- log.E[index, , , drop=FALSE]
+	object <- object[index, ]
+
 	states <- states(hmm.params)##[["states"]]
 	names(log.initial) <- states
 	S <- length(states)
 	delta <- matrix(as.double(0), nrow=TT, ncol=S)
 	rangedData <- list()
+	if(verbose) {
+		pb <- txtProgressBar(min=0, max=ncol(object), style=3)
+	}
 	for(j in 1:ncol(log.E)){
+		if(verbose) setTxtProgressBar(pb, j)
 		rD <- vector("list", length(unique(arm)))
 		for(a in seq_along(unique(arm))){
-			I <- arm == a
+			missingE <- rowSums(is.na(log.E[, j, ])) > 0
+			I <- arm == a  & !missingE
 			if(sum(I) < 2) next()
 			T <- sum(I)
 			transitionPr <- exp(-2 * diff(position(object)[I])/TAUP)
@@ -367,6 +378,7 @@ viterbi <- function(object,
 			rangedData[[j]] <- do.call(c, rD)
 		}
 	}
+	if(verbose) close(pb)
 ##	L <- sapply(rangedData, nrow)
 ##	if(any(L == 1) & any(L > 1)){
 ##		rangedData <- c(do.call(c, rangedData[L == 1]), do.call(c, rangedData[L > 1]))
