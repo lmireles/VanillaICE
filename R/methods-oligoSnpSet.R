@@ -1,4 +1,4 @@
-setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
+setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  log.beta.cn <- cnEmission(object, hmm.params)
 		  log.beta.gt <- gtEmission(object, hmm.params)
@@ -10,19 +10,19 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 					     states(hmm.params))
 		  viterbi(object, hmm.params, log.E=log.beta)
 })
-setMethod("hmm", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
+setMethod("hmm2", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  log.emission <- emit(object, hmm.params)
 		  viterbi(object, hmm.params, ...)
 })
-setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
+setMethod("hmm2", signature(object="SnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  log.emission <- emit(object, hmm.params)
 		  viterbi(object, hmm.params, ...)
 })
 
 
-setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
+setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  res <- vector("list", ncol(object))
 		  v2 <- verbose(hmm.params)
@@ -57,7 +57,7 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 				  CHR <- chromosomes[k]
 				  i <- marker.index.list[[k]]
 				  obj <- object[i, jj]
-				  tmp[[k]] <- hmm(object=obj, hmm.params=hmm.params, ...)
+				  tmp[[k]] <- hmm2(object=obj, hmm.params=hmm.params, ...)
 			  }
 			  if(length(tmp) > 1){
 				  rdlist <- RangedDataList(tmp)

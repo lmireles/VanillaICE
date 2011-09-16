@@ -181,10 +181,6 @@ hmmOpts <- hmm.setup(oligoSet,
 		     prGenotypeHomozygous=c(0.99, 0.99, 0.7, 0.7))
 @
 
-\noindent The log-scale emission probabilities:
-<<emission.gt>>=
-dim(hmmOpts$log.emission)
-@
 \noindent The viterbi algorithm is used to obtain the most likely
 sequence of hidden states given the observed data.  For efficiency, we
 return an object of class \Robject{RangedData} with genomic coordinates

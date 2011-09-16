@@ -622,7 +622,6 @@ hmm.setup <- function(object,
 		      is.log=FALSE,
 		      ##EMIT.THR=-10,
 		      scaleSds=TRUE,
-		      verbose=TRUE,
 		      log.initial=log(rep(1/length(states), length(states))),
 		      normalIndex=3,
 		      prGenotypeHomozygous=numeric(), ##only used when ICE=FALSE
