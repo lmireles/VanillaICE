@@ -1058,32 +1058,11 @@ cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
 	fn <- featureNames(object)
 	S <- length(states)
 	CN <- copyNumber(object)
-	prOutlier <- hmmOptions$prCopyNumberOutlier
-##		  if(any(rowSums(is.na(CN)) == ncol(CN))){
-##			  stop("Some rows have all missing values. Exclude these before continuing.")
-##		  }
 	if(any(colSums(is.na(CN)) == nrow(CN))){
 		stop("Some samples have all missing values. Exclude these samples before continuing.")
 	}
-	cn.conf <- cnConfidence(object)
-	if(all(is.na(cn.conf))){
-		message("cnConfidence missing.  Using MAD")
-		autosome.index <- which(chromosome(object) < 23)
-		sds <- apply(CN[autosome.index, , drop=FALSE], 2, mad, na.rm=TRUE)
-		##sds <- robustSds2(copyNumber(object))
-		sds <- matrix(sds, nrow(CN), ncol(CN), byrow=TRUE)
-		##cnConfidence(object) <- 1/sds
-	} else {
-		sds <- 1/cn.conf
-	}
-	tmp <- rowSums(!is.finite(sds))
-	if(any(sds == 0, na.rm=TRUE)){
-		warning("some sds were zero.  Replacing with typical value")
-		sds[sds == 0] <- median(sds, na.rm=TRUE)
-	}
+	sds <- getSds(object)
 	emission.cn <- array(NA, dim=c(nrow(object), ncol(object), S))
-	##		  if(!is.matrix(cnStates))
-	##			  cnStates <- matrix(cnStates, nrow(object), length(cnStates), byrow=TRUE)
 	if(is.log){
 		MIN.CN <- -10
 		MAX.CN <- 2.5
@@ -1091,15 +1070,12 @@ cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
 		MIN.CN <- 0
 		MAX.CN <- 10
 	}
-	##		  if(any(CN < MIN.CN, na.rm=TRUE)) CN[CN < MIN.CN] <- MIN.CN
-	##		  if(any(CN > MAX.CN, na.rm=TRUE)) CN[CN > MAX.CN] <- MAX.CN
+	if(any(CN < MIN.CN, na.rm=TRUE)) CN[CN < MIN.CN] <- MIN.CN
+	if(any(CN > MAX.CN, na.rm=TRUE)) CN[CN > MAX.CN] <- MAX.CN
 	for(j in 1:ncol(object)){
 		cn <- CN[, j, drop=FALSE]
 		sd <- sds[, j, drop=FALSE]
-		##cn <- matrix(CN[, j], nrow(object), ncol(cnStates))
-		##sd <- matrix(sds[, j], nrow(object), ncol(cnStates))
 		I <- which(!is.na(as.numeric(cn)))
-		##emission.cn <- rep(NA, length(as.vector(cnStates)))
 		old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
 		cnvector <- as.numeric(cn)[I]
 		prOutlier <- probabilityOutlier(cnvector, k=k)
@@ -1127,9 +1103,6 @@ gtEmission <- function(object, hmmOptions){
 		GT <- calls(object)
 		emission <- array(GT, dim=c(nrow(GT), ncol(GT), length(states)), dimnames=list(featureNames(object), sampleNames(object), states))
 		missingGT <- any(is.na(GT))
-##		if(missingGT){
-##			if(verbose==2) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
-##		}
 		for(s in seq(along=states)){
 			tmp <- GT
 			tmp[tmp == 1 | tmp == 3] <- p[s]
@@ -1194,10 +1167,119 @@ probabilityOutlier <- function(cn, k=3, verbose){
 checkAnnotation <- function(object){
 	if(!annotation(object) %in% icePlatforms()){
 		stop("ICE is TRUE, but hapmap crlmm confidence scores for ", annotation(object), " are not available. Using crlmm confidence scores from HapMap samples assayed on the Affy 6.0 platform.")
-		##annotation <- "genomewidesnp6"
-	} ##else {
-##		if(annotation(object) == "pd.genomewidesnp.6"){
-##			annotation <- "genomewidesnp6"
-##		} else annotation <- annotation(object)
-##	}
+	}
+}
+
+
+icePlatforms <- function(){
+	c("pd.genomewidesnp.6",
+	  "genomewidesnp6",
+	  "pd.mapping250k.nsp",
+	  "pd.mapping250k.sty",
+	  "pd.mapping250k.nsp, pd.mapping250k.sty")
+}
+
+
+genotypeEmissionCrlmm <- function(object, hmmOptions){
+	if(annotation(object) == "pd.genomewidesnp.6"){
+		annotation <- "genomewidesnp6"
+	} else annotation <- annotation(object)
+	loader(paste(annotation, "Conf.rda", sep=""), .vanillaIcePkgEnv, "VanillaICE")
+	hapmapP <- getVarInEnv("reference")
+	pHetCalledHom <- hmmOptions[["prHetCalledHom"]]
+	pHetCalledHet <- hmmOptions[["prHetCalledHet"]]
+	pHomInNormal <- hmmOptions[["prHomInNormal"]]
+	pHomInRoh <- hmmOptions[["prHomInRoh"]]
+	if(length(annotation(object)) < 1) stop("must specify annotation")
+	GT <- as.integer(calls(object))
+	GTconf <- confs(object)
+	##data(list=paste(annotation, "Conf", sep=""), package="VanillaICE", envir=environment())
+	if(length(pHomInNormal) == nrow(GTconf)){  ##convert to vector
+		pHomInNormal <- as.numeric(matrix(pHomInNormal, nrow(GTconf), ncol(GTconf), byrow=FALSE))
+	} else pHomInNormal <-  rep(pHomInNormal, length(GT))
+	hapmapP[, 2] <- 1-exp(-hapmapP[, 2]/1000)
+	##p = 1-exp(-X/1000)
+	##1000*log(1-p)=X
+	##confidence <- 1-exp(-GTconf/1000)
+	i11 <- hapmapP[, 1] == 3  ##called homozygous truth homozygous
+	i12 <- hapmapP[, 1] == 4  ##called homozygous truth heterozygous
+	i21 <- hapmapP[, 1] == 1  ##called het truth hom
+	i22 <- hapmapP[, 1] == 2  ##called het truth het
+	f11 <- density(hapmapP[i11, 2], from=0, to=1, n=1e3)
+	f12 <- density(hapmapP[i12, 2], from=0, to=1, n=1e3)
+	f21 <- density(hapmapP[i21, 2], from=0, to=1, n=1e3)
+	f22 <- density(hapmapP[i22, 2], from=0, to=1, n=1e3)
+	##-------------------------------------------------------------------------
+	##distribution of observed call probabilities when the call is homozygous
+	##-------------------------------------------------------------------------
+	##-------------------------------------------------------------------------
+	##P(phat | LOH, gte)
+	##-------------------------------------------------------------------------
+	##GT <- as.integer(genotypes)
+	##confidence <- as.numeric(confidence)
+	confidence <- as.numeric(GTconf)
+	pTruthIsNormal <- pTruthIsRoh <- rep(NA, length(GT))
+	confidence[confidence==0] <- 0.01 ##Otherwise, NA's result
+	hom <- which(GT == 1 | GT == 3)
+	observedPcalledHom <- cut(confidence[hom], breaks=f11$x, labels=FALSE)
+	pTruthIsRoh[hom] <- f11$y[observedPcalledHom]
+	het <- which(GT == 2)
+	observedPcalledHet <- cut(confidence[het], breaks=f11$x, labels=FALSE)
+	pTruthIsRoh[het] <- f21$y[observedPcalledHet]
+	##-------------------------------------------------------------------------
+	##Calculate P(phat | Normal, HOM)
+	##-------------------------------------------------------------------------
+	chet1 <- f22$y[cut(confidence[het], breaks=f22$x, labels=FALSE)]
+	chet2 <- f21$y[cut(confidence[het], breaks=f21$x, labels=FALSE)]
+	##term5[1]=P(true genotype is HET | genotype call is AB, state is normal)
+	pTruthIsNormal[het] <- chet1*pHetCalledHet + chet2*(1-pHetCalledHet)
+	##chom1=called homozygous truth heterozygous
+	chom1 <- f12$y[cut(confidence[hom], breaks=f12$x, labels=FALSE)]
+	##chom2=called homozygous truth homozygous
+	chom2 <- f11$y[cut(confidence[hom], breaks=f11$x, labels=FALSE)]
+	##chom4 <- 0.9999    ##P(HOM|CHOM)
+	##probability that the true state is HOM when genotype call is homozygous
+	##pHetCalledHom = P(true genotype is HET | calls is AA or BB, state is normal)
+	pTruthIsNormal[hom] <- chom1*pHetCalledHom + chom2*(1-pHetCalledHom)
+	fNormal <- fLoh <- rep(NA, length(GT))
+	fNormal[hom] <- pHomInNormal[hom] * pTruthIsNormal[hom]
+	fNormal[het] <- (1-pHomInNormal[het]) * pTruthIsNormal[het]
+	fLoh[hom] <- pHomInRoh * pTruthIsRoh[hom]
+	fLoh[het] <- (1-pHomInRoh) * pTruthIsRoh[het]
+	f <- array(NA, dim=c(nrow(object), ncol(object), 2), dimnames=list(featureNames(object),
+							     sampleNames(object),
+							     c("normal", "ROH")))
+	f[, , "normal"] <- matrix(fNormal, nrow(object), ncol(object))
+	f[, , "ROH"] <- matrix(fLoh, nrow(object), ncol(object))
+	f[f  == 0] <- min(f[f > 0], na.rm=TRUE)
+	f <- log(f)
+	return(f)
+}
+
+xypanel <- function(x, y,
+		    gt,
+		    is.snp,
+		    range,
+		    col.hom="grey60",
+		    fill.hom="lightblue",
+		    col.het="grey60" ,
+		    fill.het="salmon",
+		    col.np="grey20",
+		    fill.np="green3",
+		    ..., subscripts){
+	panel.grid(v=0, h=4, "grey", lty=2)
+	panel.xyplot(x, y, ...)
+	is.snp <- is.snp[subscripts]
+	gt <- gt[subscripts]
+	hets.index <- which(gt == 2)
+	hom.index <- which(gt == 1 | gt == 3)
+	if(length(hom.index) > 0)
+		lpoints(x[hom.index], y[hom.index], col=col.hom, fill=fill.hom,...)
+	if(any(!is.snp))
+		lpoints(x[!is.snp], y[!is.snp], col=col.np, fill=fill.np, ...)
+	if(length(hets.index) > 0)
+		lpoints(x[hets.index], y[hets.index], col=col.het, fill=fill.het, ...)
+	j <- panel.number()
+	lrect(xleft=start(range)[j]/1e6, xright=end(range)[j]/1e6,
+	      ybottom=-10, ytop=10, ...)
 }
