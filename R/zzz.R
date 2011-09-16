@@ -5,12 +5,12 @@ THISPKG <- "VanillaICE"
 ##}
 ##
 
-.onLoad <- function(libname, pkgname){
-	require("methods")
-}
+##.onLoad <- function(libname, pkgname){
+##	require("methods")
+##}
 
 .onAttach <- function(libname, pkgname) {
-	message("Welcome to VanillaICE version ", packageDescription(THISPKG, field="Version"))
+	packageStartupMessage("Welcome to VanillaICE version ", packageDescription(THISPKG, field="Version"))
 }
 
 .onUnload <- function(libpath){

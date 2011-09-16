@@ -12,6 +12,7 @@
 \newcommand{\Rpackage}[1]{\textit{#1}}
 \newcommand{\Rfunction}[1]{\texttt{#1}}
 \newcommand{\Robject}[1]{\texttt{#1}}
+\newcommand{\Rclass}[1]{\texttt{#1}}
 \newcommand{\R}{\textsf{R}}
 \newcommand{\hmmoptions}{\Robject{HmmOptions}}
 \newcommand{\hmmparam}{\Robject{HmmParameter}}
@@ -197,8 +198,10 @@ oligoSet <- oligoSet[chromosome(oligoSet) <= 2, ]
 fit.van <- hmm(oligoSet, hmmOpts)
 @
 
+Next we plot the data for chromosome 1 and overlay the predictions
+from the hidden markov model. See Figure \ref{fig:chr1}.
 
-<<fig2, fig=TRUE, width=8, echo=FALSE>>=
+<<fig2, fig=TRUE, width=8, echo=FALSE, include=FALSE>>=
 library(RColorBrewer)
 cols <- brewer.pal(5, "YlOrBr")[2:5]
 chr1 <- oligoSet[chromosome(oligoSet)==1,]
@@ -221,6 +224,83 @@ for(i in 1:nrow(fit.chr1)){
 }
 legend("topleft", fill=cols, legend=hmmOpts$states, bty="n")
 @
+\begin{figure}[t]
+  \includegraphics[width=0.9\textwidth]{VanillaICE-fig2}
+  \caption{\label{fig:chr1} Plot of artificial data for one chromosome.}
+\end{figure}
+To find which markers are included in each genomic interval
+returned by the \Rfunction{hmm} method, one can use the
+\Rfunction{findOverlaps} method in the \Rpackage{oligoClasses}. This
+method returns the 'match matrix'.  The first column in the match
+matrix are indices of the genomic intervals (rows) of the
+\Rclass{RangedDataHMM} object; the second column in the match matrix
+is a vector of indices for the markers in the \Robject{oligoSet}
+object.  For example, the second interval in the
+\Robject{RangedDataHMM} object \Robject{fit.van} contains 102
+markers.
+<<range2>>=
+fit.van[2, ]
+@
+To find the names of the 102 markers that are included in
+this genomic interval, one could do the following
+<<findOverlaps>>=
+mm <- findOverlaps(fit.van, oligoSet)
+featureNames(oligoSet)[mm[,1]==2]
+@
+Multipanel displays can be useful for visualizing the low-level data
+for copy number alterations.  We extend the \Rfunction{xyplot} method
+in the \R{} package lattice for two common use-cases: by-locus and
+by-sample.
+
+\paragraph{By locus.} To plot the genomic data for a set of ranges at
+a given locus, we provide an unevaluated code chunk below (our example
+contains only a single sample):
+<<multipanelSingeLocus,eval=FALSE>>=
+xyplot(cn ~ x | id, oligoSet, range=RangedDataObject, ylim=c(-0.5,4), panel=xypanel)
+@ Note that the default in the above command would be to use a common
+x- and y-scales for each panel.  To allow the x-axes to change for
+each panel, one could set the x-scales to 'free':
+<<multipanelSingeLocus,eval=FALSE>>=
+xyplot(cn ~ x | id, oligoSet, range=RangedDataObject, ylim=c(-0.5,4), scales=list(x="free"),
+       panel=xypanel)
+@ The function \Rfunction{xypanel} provides default colors for
+annotating the plotting symbols by genotype and by whether the markers
+are polymorphic. The \Robject{RangedDataHMM} must be passed by the
+name \emph{range} to the \Rfunction{xyplot} method.
+
+\paragraph{By sample.}
+To plot the low-level data for multiple alterations occurring in a
+single sample, one can again pass a \Rclass{RangedDataHMM} object with
+name \emph{range} to the \Rfunction{xyplot}. See Figure
+\ref{fig:xy}. Note that the formula in the example below conditions on
+\emph{range} instead of \emph{id}.  The conditioning variable for
+displaying multiple panels of a single sample must be called
+'range'. We plot a 2 Mb window surrounding each of the alterations in
+the simulated data by specifying \texttt{frame=2e6}.
+<<xyplotExample,fig=TRUE,include=FALSE, width=9, height=6>>=
+ranges.altered <- fit.van[state(fit.van) != 4, ]
+xy.example <- xyplot(cn ~ x | range, oligoSet, range=ranges.altered, frame=2e6,
+			scales=list(x="free"), ylim=c(-0.5,4),
+			panel=xypanel, pch=21, border="grey")
+@
+See \texttt{?xyplot} for additional details.
+
+<<xyplotPrint,echo=FALSE>>=
+pdf("VanillaICE-xyplot.pdf", width=8, height=7)
+print(xy.example)
+dev.off()
+@
+\begin{figure}[t]
+  \includegraphics[width=\textwidth]{VanillaICE-xyplot}
+  \caption{\label{fig:xy} The method \Rfunction{xyplot} is used to
+    create a multi-panel display of alterations in a
+    single sample. Each panel displays a single copy number alteration
+    detected by the HMM that is boxed by a rectangle. The alteration
+    is framed by specifying the number of basepairs to plot upstream
+    and downstream of the alteration.  Here, we used a frame of 2 Mb.}
+\end{figure}
+Note also that \texttt{scales} must be set to \emph{free} in the above
+call to \Rfunction{xyplot}.
 
 \subsection{ICE HMM}
 
@@ -293,10 +373,10 @@ cnSet <- cnSet[order(chromosome(cnSet), position(cnSet)), ]
 cnSet <- cnSet[!is.na(chromosome(cnSet)), ]
 cnSet <- cnSet[chromosome(cnSet) <= 2, ]
 hmmOpts <- hmm.setup(cnSet,
-		      copynumberStates=log2(c(0, 1, 2, 3)),
-		      states=c("hom-del", "hem-del", "normal", "amp"),
-		      normalIndex=3,
-		      log.initialP=rep(log(1/4), 4))
+		     copynumberStates=log2(c(0, 1, 2, 3)),
+		     states=c("hom-del", "hem-del", "normal", "amp"),
+		     normalIndex=3,
+		     log.initialP=rep(log(1/4), 4))
 fit.cn <- hmm(cnSet, hmmOpts)
 @
 
