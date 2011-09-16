@@ -184,11 +184,11 @@ viterbi <- function(object,
 	sns <- colnames(log.E)
 	if(is.null(sns)) stop("no dimnames for log.emission")
 	##log.initial <- hmm.params[["log.initial"]]
-	log.initial <- log.initialPr(hmm.params)
-	verbose <- verbose(hmm.params)
-	normal2altered <- n2a(hmm.params)
-	altered2normal <- a2n(hmm.params)
-	altered2altered <- a2a(hmm.params)
+	log.initial <- hmm.params$log.initialPr
+	verbose <- hmm.params$verbose
+	normal2altered <- hmm.params$n2a
+	altered2normal <- hmm.params$a2n
+	altered2altered <- hmm.params$a2a
 	##
 	if(normal2altered <= 0) stop("normal2altered must be > 0")
 	if(altered2normal <= 0) stop("altered2normal must be > 0")
@@ -196,11 +196,11 @@ viterbi <- function(object,
 	##
 	## arm can contain NA's for invalid chromosomes or NA's
 	arm <- getChromosomeArm(object)
-	normalIndex <- normalIndex(hmm.params)##[["normalIndex"]]
+	normalIndex <- hmm.params$normalIndex##[["normalIndex"]]
 	if(normalIndex < 1 | normalIndex > dim(log.E)[[3]]){
 		stop("normalIndex in hmm.params not valid")
 	}
-	TAUP <- tau(hmm.params)
+	TAUP <- hmm.params$tau
 	c1 <- normal2altered
 	c2 <- altered2normal
 	c3 <- altered2altered
@@ -211,7 +211,7 @@ viterbi <- function(object,
 	log.E <- log.E[index, , , drop=FALSE]
 	object <- object[index, ]
 
-	states <- states(hmm.params)##[["states"]]
+	states <- hmm.params$states
 	names(log.initial) <- states
 	S <- length(states)
 	delta <- matrix(as.double(0), nrow=TT, ncol=S)
@@ -220,6 +220,8 @@ viterbi <- function(object,
 		rD <- vector("list", length(unique(arm)))
 		for(a in seq_along(unique(arm))){
 			missingE <- rowSums(is.na(log.E[, j, ])) > 0
+			notFinite <- rowSums(!is.finite(log.E[, j, ])) > 0
+			missingE <- missingE | notFinite
 			I <- arm == a  & !missingE
 			if(sum(I) < 2) next()
 			T <- sum(I)
@@ -635,8 +637,6 @@ hmm.setup <- function(object,
 		      a2n=1,
 		      n2a=1,
 		      a2a=1,
-		      marker.index=NULL,
-		      sample.index=NULL,
 		      verbose=2L,
 		      prCopyNumberOutlier=0.01,
 		      ...){  ## whether the save the emission probabilities
@@ -654,14 +654,12 @@ hmm.setup <- function(object,
 		    prHetCalledHom=pHetCalledHom,
 		    prHetCalledHet=pHetCalledHet,
 		    prHomInNormal=pHomInNormal,
-		    prHomInRoh=prHomInRoh,
+		    prHomInRoh=pHomInRoh,
 		    rohStates=rohStates,
 		    tau=tau,
 		    a2n=a2n,
 		    n2a=n2a,
 		    a2a=a2a,
-		    marker.index=marker.index,
-		    sample.index=sample.index,
 		    verbose=verbose,
 		    prCopyNumberOutlier=prCopyNumberOutlier, ...)
 	res <- as(res, "HmmOptionList")
@@ -1052,11 +1050,11 @@ findFatherMother <- function(offspringId, object){
 ##	return(fig)
 ##}
 
-cnEmission <- function(object, hmmOptions, k=3){
-	cnStates <- copynumberStates(hmmOptions)##[["copynumberStates"]]
-	verbose <- verbose(hmmOptions)
-	states <- states(hmmOptions)#[["states"]]
-	is.log <- is.log(hmmOptions)#
+cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
+	cnStates <- hmmOptions$copynumberStates##[["copynumberStates"]]
+	verbose <- hmmOptions$verbose
+	states <- hmmOptions$states
+	is.log <- hmmOptions$is.log
 	fn <- featureNames(object)
 	S <- length(states)
 	CN <- copyNumber(object)
@@ -1118,12 +1116,12 @@ cnEmission <- function(object, hmmOptions, k=3){
 }
 
 gtEmission <- function(object, hmmOptions){
-	ICE <- ICE(hmmOptions)
+	ICE <- hmmOptions$ICE
+	states <- hmmOptions$states
 	if(!ICE){
-		states <- states(hmmOptions)
-		p <- prGtHom(hmmOptions)
-		prGenotypeMissing <- prGtMis(hmmOptions)
-		verbose <- verbose(hmmOptions)
+		p <- hmmOptions$prGtHom
+		prGenotypeMissing <- hmmOptions$prGtMis
+		verbose <- hmmOptions$verbose
 		stopifnot(length(p) == length(states))
 		if(!is.numeric(calls(object))) stop("genotypes must be integers (1=AA, 2=AB, 3=BB) or NA (missing)")
 		GT <- calls(object)
@@ -1146,27 +1144,28 @@ gtEmission <- function(object, hmmOptions){
 			emission[, , s] <- tmp
 		}
 		logemit <- log(emission)
-		return(logemit)
+		##return(logemit)
 	} else {
-		stop('need to update ICE option')
-		log.gt.emission <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
+		##stop('need to update ICE option')
+		logemit <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
 					 dimnames=list(featureNames(object),
 					 sampleNames(object),
 					 states))
-		tmp <- genotypeEmissionCrlmm(object, hmm.params)
-		rohStates <- which(hmm.params[["rohStates"]])
-		notRohState <- which(!hmm.params[["rohStates"]])
-		for(j in rohStates){
-			log.gt.emission[, , j] <- tmp[, , "ROH"]
+		tmp <- genotypeEmissionCrlmm(object, hmmOptions)
+		rohStates <- which(hmmOptions[["rohStates"]])
+		notRohState <- which(!hmmOptions[["rohStates"]])
+		if(length(rohStates) > 0){
+			logemit[, , rohStates] <- tmp[, , "ROH"]
 		}
-		for(j in notRohState){
-			log.gt.emission[, , j] <- tmp[, , "normal"]
+		if(length(notRohState) > 0){
+			logemit[, , notRohState] <- tmp[, , "normal"]
 		}
 	}
+	return(logemit)
 }
 
 
-probabilityOutlier <- function(cn, k=3){
+probabilityOutlier <- function(cn, k=3, verbose){
 	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
 	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
 	rmeds <- runmed(cn, k)
@@ -1192,3 +1191,13 @@ probabilityOutlier <- function(cn, k=3){
 
 
 
+checkAnnotation <- function(object){
+	if(!annotation(object) %in% icePlatforms()){
+		stop("ICE is TRUE, but hapmap crlmm confidence scores for ", annotation(object), " are not available. Using crlmm confidence scores from HapMap samples assayed on the Affy 6.0 platform.")
+		##annotation <- "genomewidesnp6"
+	} ##else {
+##		if(annotation(object) == "pd.genomewidesnp.6"){
+##			annotation <- "genomewidesnp6"
+##		} else annotation <- annotation(object)
+##	}
+}

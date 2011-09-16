@@ -1,59 +1,51 @@
 setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
-		  log.beta.cn <- cnEmission(object, hmm.params)
+		  verbose <- hmm.params[["verbose"]] > 0
+		  log.beta.cn <- cnEmission(object, hmm.params, verbose=verbose, ...)
 		  log.beta.gt <- gtEmission(object, hmm.params)
 		  ##log.emission <- emit(object, hmm.params)
 
 		  log.beta <- log.beta.cn+log.beta.gt
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
-					     states(hmm.params))
+					     hmm.params$states)
 		  viterbi(object, hmm.params, log.E=log.beta)
 })
-setMethod("hmm2", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, ...){
-		  log.emission <- emit(object, hmm.params)
-		  viterbi(object, hmm.params, ...)
-})
-setMethod("hmm2", signature(object="SnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, ...){
-		  log.emission <- emit(object, hmm.params)
-		  viterbi(object, hmm.params, ...)
-})
+
+
 
 
 setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
-		  res <- vector("list", ncol(object))
-		  v2 <- verbose(hmm.params)
+		  v2 <- hmm.params$verbose
 		  naindex <- which(is.na(chromosome(object)) | is.na(position(object)))
-		  if(length(naindex) > 0){
-			  warning("NA's in annotation -- check chromosome or position. Ignoring markers with missing annotation")
+		  if(length(naindex) > 0)
 			  object <- object[-naindex, ]
-		  }
+		  ice <- hmm.params$ICE
+		  if(ice) checkAnnotation(object)
 		  missingGT <- any(is.na(calls(object)))
 		  if(missingGT){
 			  if(v2 > 0) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
 		  }
-		  if(is.null(markerIndex(hmm.params))){
-			  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
-			  chromosomes <- unique(chromosome(object))
-			  ix <- order(chromosome(object), position(object))
-		  } else {
-			  marker.index <- markerIndex(hmm.params)
-			  marker.index.list <- split(marker.index, chromosome(object)[marker.index])
-			  chromosomes <- unique(chromosome(object)[marker.index])
-			  ix <- order(chromosome(object)[marker.index], position(object)[marker.index])
+		  if(v2 > 0){
+			  if("k" %in% names(list(...))){
+				  k <- list(...)[["k"]]
+			  } else k <- 3
+			  message("Using a running median of ", k, " markers to estimate the outlier probability.")
 		  }
+		  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
+		  chromosomes <- unique(chromosome(object))
+		  ix <- order(chromosome(object), position(object))
 		  if(any(diff(ix) < 0)) {
 			  object <- object[ix, ]
 		  }
-		  if(is.null(sampleIndex(hmm.params))){
+		  if(is.null(hmm.params$sample.index)){
 			  sample.index <- seq(length=ncol(object))
-		  } else sample.index <- sampleIndex(object)
+		  } else sample.index <- hmm.params$sample.index
 		  if(v2 > 0) {
 			  pb <- txtProgressBar(min=0, max=ncol(object), style=3)
 		  }
+		  res <- vector("list", ncol(object))
 		  for(j in seq_along(sample.index)){
 			  jj <- sample.index[j]
 			  tmp <- vector("list", length(chromosomes))
@@ -90,11 +82,11 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 
 setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params){
-		  ICE <- ICE(hmm.params)
+		  ICE <- hmm.params$ICE
 		  ##EMIT.THR <- hmm.params[["EMIT.THR"]]
-		  states <- states(hmm.params)
-		  verbose <- verbose(hmm.params)
-		  normalIndex <- normalIndex(hmm.params)
+		  states <- hmm.params$states
+		  verbose <- hmm.params$verbose
+		  normalIndex <- hmm.params$normalIndex
 		  if(all(is.na(cnConfidence(object)))){
 			  message("cnConfidence missing.  Using MAD")
 			  sds <- robustSds2(copyNumber(object))
