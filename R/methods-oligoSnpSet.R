@@ -18,9 +18,8 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  v2 <- hmm.params$verbose
-		  naindex <- which(is.na(chromosome(object)) | is.na(position(object)))
-		  if(length(naindex) > 0)
-			  object <- object[-naindex, ]
+		  marker.index <- validChromosomeIndex(object)
+		  object <- object[marker.index, ]
 		  ice <- hmm.params$ICE
 		  if(ice) checkAnnotation(object)
 		  missingGT <- any(is.na(calls(object)))

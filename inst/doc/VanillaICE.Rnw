@@ -175,11 +175,11 @@ physical position.
 <<logscale>>=
 oligoSet <- oligoSet[order(chromosome(oligoSet), position(oligoSet)), ]
 hmmOpts <- hmm.setup(oligoSet,
-		     copynumberStates=log2(c(1, 2, 2, 3)),
-		     states=c("hem-del", "ROH", "normal", "amp"),
-		     normalIndex=3,
-		     log.initialP=rep(log(1/4), 4),
-		     prGenotypeHomozygous=c(0.99, 0.99, 0.7, 0.7))
+		     copynumberStates=log2(c(0, 1, 2, 2, 3)),
+		     states=c("hom-del", "hem-del", "ROH", "normal", "amp"),
+		     normalIndex=4,
+		     log.initialP=rep(log(1/5), 5),
+		     prGenotypeHomozygous=c(2/3, 0.99, 0.99, 0.7, 0.7))
 @
 
 \noindent The viterbi algorithm is used to obtain the most likely
