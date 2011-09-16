@@ -9,7 +9,7 @@ setGeneric("segmentData", function(object) standardGeneric("segmentData"))
 setGeneric("segmentData<-", function(object, value) standardGeneric("segmentData<-"))
 
 ##RangedDataCn generics
-setGeneric("LLR", function(object) standardGeneric("LLR"))
+##setGeneric("LLR", function(object) standardGeneric("LLR"))
 setGeneric("nMarkers", function(object) standardGeneric("nMarkers"))
 setGeneric("rd2df", function(object, hmm.params, ...) standardGeneric("rd2df"))
 ##setGeneric("plot", useAsDefault=function(x,y,...) graphics::plot(x,y,...))
@@ -47,3 +47,4 @@ setGeneric("emit", function(object, hmm.params) standardGeneric("emit"))
 
 
 setGeneric("xyplot", useAsDefault=function(x, data, ...) lattice::xyplot(x, data,...))
+setGeneric("xyplot2", function(x, data, range, frame=50e3L, ...) standardGeneric("xyplot2"))
