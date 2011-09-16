@@ -393,12 +393,12 @@ viterbi <- function(object,
 	starts <- unlist(lapply(rangedData, start))
 	ends <- unlist(lapply(rangedData, end))
 	ir <- IRanges(start=starts, end=ends)
-	rangedData <- RangedData(ir,
-				 chrom=chr,
-				 sampleId=sampleId,
-				 state=state,
-				 numMarkers=numMarkers,
-				 LLR=LLR)
+	rangedData <- RangedDataHMM(ranges=ir,
+				    chromosome=chr,
+				    sampleId=sampleId,
+				    state=state,
+				    num.mark=numMarkers,
+				    LLR=LLR)
 	##rangedData <- as(rangedData, "RangedDataCn")
 	return(rangedData)
 }
