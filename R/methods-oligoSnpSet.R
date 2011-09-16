@@ -47,12 +47,12 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  if(is.null(sampleIndex(hmm.params))){
 			  sample.index <- seq(length=ncol(object))
 		  } else sample.index <- sampleIndex(object)
+		  if(v2 > 0) {
+			  pb <- txtProgressBar(min=0, max=ncol(object), style=3)
+		  }
 		  for(j in seq_along(sample.index)){
 			  jj <- sample.index[j]
 			  tmp <- vector("list", length(chromosomes))
-			  if(v2 > 0){
-				  if(j %% 25==0) cat("sample", j, "of", length(sample.index), "\n")
-			  }
 			  for(k in seq_along(chromosomes)){
 				  CHR <- chromosomes[k]
 				  i <- marker.index.list[[k]]
@@ -68,7 +68,9 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  } else rd <- tmp[[1]]
 			  res[[j]] <- rd
 			  rm(tmp, rd); gc()
+			  if(v2 > 0) setTxtProgressBar(pb, j)
 		  }
+		  if(v2 > 0) close(pb)
 		  if(length(res) > 1){
 			  ##rdlist <- lapply(res, function(x) as(x, "RangedData"))
 			  rdlist <- RangedDataList(res)

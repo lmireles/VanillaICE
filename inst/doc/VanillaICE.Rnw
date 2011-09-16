@@ -129,7 +129,7 @@ class \Robject{oligoSnpSet} from the simulated data:
 %get rid of this
 <<createLocusSet>>=
 oligoSet <- new("oligoSnpSet",
-		copyNumber=locusLevelData[["copynumber"]]/100,
+		copyNumber=log2(locusLevelData[["copynumber"]]/100),
 		call=locusLevelData[["genotypes"]],
 		callProbability=locusLevelData[["crlmmConfidence"]],
 		annotation=locusLevelData[["platform"]])
@@ -141,12 +141,16 @@ estimates are available, these should be supplied to the
 \Robject{cnConfidence} slot in the \Robject{assayData}.  For
 illustration, in the following code chunk we transform the copy number
 estimates to the log scale and calculate a robust estimate of the
-standard deviation.  If uncertainty estimates are not available for copy
-number, the HMM will calculate the median absolute deviation (MAD).  See
-the the function \Robject{robustSds}.
+standard deviation across autosomes.  If uncertainty estimates are not
+available for copy number, the HMM will calculate the median absolute
+deviation (MAD).  See the the function \Robject{robustSds}.
 
 <<eval=FALSE>>=
-sds <- robustSds(log2(locusLevelData[["copynumber"]]/100))
+cn <- copyNumber(oligoSet)
+is.autosome <- chromosome(oligoSet) < 23
+sds <- apply(cn[is.autosome, ], 2, mad, na.rm=TRUE)
+sds <- matrix(sds, nrow(oligoSet), ncol(oligoSet), byrow=TRUE)
+cnConfidence(oligoSet) <- sds
 @
 \noindent The inverse of the \Robject{sds} object can be assigned to the
 \Robject{cnConfidence} slot.
@@ -168,7 +172,6 @@ underlying state. Note that the SNPs should be ordered by chromosome and
 physical position.
 
 <<logscale>>=
-copyNumber(oligoSet) <- log2(copyNumber(oligoSet))
 oligoSet <- oligoSet[order(chromosome(oligoSet), position(oligoSet)), ]
 hmmOpts <- hmm.setup(oligoSet,
 		     copynumberStates=log2(c(1, 2, 2, 3)),

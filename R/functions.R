@@ -13,18 +13,17 @@ rowMAD <- function(x, y, ...){
 robustSds <- function(x, takeLog=FALSE, ...){
 	if(!is.matrix(x)) stop("x is not a matrix")
 	if(takeLog) x <- log2(x)
-	if(ncol(x) > 3){
-		sds1 <- rowMAD(x, ...)
-		sds1 <- matrix(sds1, nrow(x), ncol(x))
-		sds2 <- apply(x, 2, "mad", ...)
-		df <- ncol(x)
-		##sds2 <- sds2/median(sds2, na.rm=TRUE)
-		sds2 <- sds2/min(sds2, na.rm=TRUE)
-		sds <- t(t(sds1) * sds2)
-	} else {
-		sds <- apply(x, 2, "mad", ...)
-		sds <- matrix(sds, nrow(x), ncol(x), byrow=TRUE)
-	}
+##	if(ncol(x) > 3){
+##		sds1 <- rowMAD(x, ...)
+##		sds1 <- matrix(sds1, nrow(x), ncol(x))
+##		sds2 <- apply(x, 2, "mad", ...)
+##		df <- ncol(x)
+##		##sds2 <- sds2/median(sds2, na.rm=TRUE)
+##		##sds2 <- sds2/min(sds2, na.rm=TRUE)
+##		##sds <- t(t(sds1) * sds2)
+##	} else {
+	sds <- apply(x, 2, "mad", ...)
+	sds <- matrix(sds, nrow(x), ncol(x), byrow=TRUE)
 	dimnames(sds) <- dimnames(x)
 	return(sds)
 }
@@ -217,11 +216,7 @@ viterbi <- function(object,
 	S <- length(states)
 	delta <- matrix(as.double(0), nrow=TT, ncol=S)
 	rangedData <- list()
-	if(verbose) {
-		pb <- txtProgressBar(min=0, max=ncol(object), style=3)
-	}
 	for(j in 1:ncol(log.E)){
-		if(verbose) setTxtProgressBar(pb, j)
 		rD <- vector("list", length(unique(arm)))
 		for(a in seq_along(unique(arm))){
 			missingE <- rowSums(is.na(log.E[, j, ])) > 0
@@ -378,7 +373,6 @@ viterbi <- function(object,
 			rangedData[[j]] <- do.call(c, rD)
 		}
 	}
-	if(verbose) close(pb)
 ##	L <- sapply(rangedData, nrow)
 ##	if(any(L == 1) & any(L > 1)){
 ##		rangedData <- c(do.call(c, rangedData[L == 1]), do.call(c, rangedData[L > 1]))
@@ -397,7 +391,7 @@ viterbi <- function(object,
 				    chromosome=chr,
 				    sampleId=sampleId,
 				    state=state,
-				    num.mark=numMarkers,
+				    coverage=numMarkers,
 				    LLR=LLR)
 	##rangedData <- as(rangedData, "RangedDataCn")
 	return(rangedData)
@@ -638,84 +632,119 @@ hmm.setup <- function(object,
 		      pHomInNormal=0.8,    ## ignored unless ICE is TRUE
 		      pHomInRoh=0.999, ## ignored unless ICE is TRUE
 		      rohStates=logical(), ## ignored unless ICE is TRUE
-		      trioHmm=FALSE,
+		      tau=1e8,
+		      a2n=1,
+		      n2a=1,
+		      a2a=1,
+		      marker.index=NULL,
+		      sample.index=NULL,
+		      verbose=2L,
+		      prCopyNumberOutlier=0.01,
 		      ...){  ## whether the save the emission probabilities
-	if(missing(is.log)) stop("Must specify whether the copy number is on the log scale using the <is.log> argument.")
-	if(!class(object) %in% c("SnpSet", "CopyNumberSet", "oligoSnpSet")){
-		message("class of object must be one of SnpSet, CopyNumberSet, or oligoSet")
-		stop()
-	}
-	if(class(object) == "SnpSet") copyNumber <- FALSE
-	stopifnot(is.numeric(normalIndex))
-	if(ICE){
-		##check with crlmm confidence scores for this platform are available
-		if(length(annotation(object)) < 1){
-			stop("When ICE is TRUE, annotation slot in the SnpSet object must be specified")
-		}
-		if(length(rohStates) != length(states)){
-			stop("Must specify which states are 'ROH-like.  See documentation.")
-		}
-	} else {
-		if(is(object, "oligoSnpSet")){
-			if(length(prGenotypeHomozygous) != length(states)){
-				stop("The probability of an AA or BB genotype must be specified for each state.  This specification is obtained  by passing a numeric vector of probabilities to the prGenotypeHomozygous argument.")
-			}
-		}
-	}
-	opts <- list(copynumberStates=copynumberStates,
-		     states=states,
-		     ICE=ICE,
-		     copyNumber=copyNumber,
-		     is.log=is.log,
-		     ##EMIT.THR=EMIT.THR,
-		     scaleSds=scaleSds,
-		     log.initial=log.initial,
-		     normalIndex=normalIndex,
-		     prGenotypeHomozygous=prGenotypeHomozygous,
-		     prGenotypeMissing=prGenotypeMissing,
-		     pHetCalledHom=pHetCalledHom,
-		     pHetCalledHet=pHetCalledHet,
-		     pHomInNormal=pHomInNormal,
-		     pHomInRoh=pHomInRoh,
-		     rohStates=rohStates,
-		     log.emission=NULL,
-		     log.gt.emission=NULL,
-		     log.cn.emission=NULL,
-		     verbose=verbose,
-		     ...)
-	if(trioHmm){
-		opts <- trioOptions(opts)
-		offspringId <- sampleNames(object)[object$fatherId != 0 & object$motherId != 0]
-		trios <- as.matrix(t(sapply(offspringId, findFatherMother, object=object)))
-		trios <- trios[rowSums(is.na(trios)) == 0, , drop=FALSE]
-		colnames(trios) <- c("father", "mother", "offspring")
-		opts$trios <- trios
-		opts$copyNumber <- FALSE
-		##trioList <- as(object, "TrioSetList")
-	}
-	##opts[["tau"]] <- transitionProbability(object, opts)
-	if(opts$copyNumber){
-		##check that the median copy number is near the
-		##specified copy number for the normal hidden state
-		##(helps prevent errors from forgetting to take the
-		##log)
-		isAutosome <- chromosome(object) <= 22
-		if(sum(isAutosome) > 1){
-			med <- median(as.numeric(copyNumber(object)[isAutosome, ]), na.rm=TRUE)
-			med.normal <- copynumberStates[normalIndex]
-			delta <- abs(med-med.normal)
-			if(delta < 0.1){
-				if(verbose==2) message("The absolute difference between the median copy number and copynumberState[normalIndex] is ", abs(med-med.normal))
-			} else {
-				warning("The absolute difference between the median copy number and copynumberState[normalIndex] is ", delta)
-			}
-		}
-	}
-	if(!trioHmm){
-		opts <- calculateEmission(object, opts)
-	}
-	opts <- as(opts, "HmmOptionList")
-	opts
+	res <- list(snpsetClass=class(object),
+		    copynumberStates=copynumberStates,
+		    states=states,
+		    ICE=ICE,
+		    copyNumber=copyNumber,
+		    is.log=is.log,
+		    scaleSds=scaleSds,
+		    log.initialPr=log.initial,
+		    normalIndex=normalIndex,
+		    prGtHom=prGenotypeHomozygous,
+		    prGtMis=prGenotypeMissing,
+		    prHetCalledHom=pHetCalledHom,
+		    prHetCalledHet=pHetCalledHet,
+		    prHomInNormal=pHomInNormal,
+		    prHomInRoh=prHomInRoh,
+		    rohStates=rohStates,
+		    tau=tau,
+		    a2n=a2n,
+		    n2a=n2a,
+		    a2a=a2a,
+		    marker.index=marker.index,
+		    sample.index=sample.index,
+		    verbose=verbose,
+		    prCopyNumberOutlier=prCopyNumberOutlier, ...)
+	res <- as(res, "HmmOptionList")
+	return(res)
+##	prHet
+##
+##	if(missing(is.log)) stop("Must specify whether the copy number is on the log scale using the <is.log> argument.")
+##	if(!class(object) %in% c("SnpSet", "CopyNumberSet", "oligoSnpSet")){
+##		message("class of object must be one of SnpSet, CopyNumberSet, or oligoSet")
+##		stop()
+##	}
+##	if(class(object) == "SnpSet") copyNumber <- FALSE
+##	stopifnot(is.numeric(normalIndex))
+##	if(ICE){
+##		##check with crlmm confidence scores for this platform are available
+##		if(length(annotation(object)) < 1){
+##			stop("When ICE is TRUE, annotation slot in the SnpSet object must be specified")
+##		}
+##		if(length(rohStates) != length(states)){
+##			stop("Must specify which states are 'ROH-like.  See documentation.")
+##		}
+##	} else {
+##		if(is(object, "oligoSnpSet")){
+##			if(length(prGenotypeHomozygous) != length(states)){
+##				stop("The probability of an AA or BB genotype must be specified for each state.  This specification is obtained  by passing a numeric vector of probabilities to the prGenotypeHomozygous argument.")
+##			}
+##		}
+##	}
+##	opts <- list(copynumberStates=copynumberStates,
+##		     states=states,
+##		     ICE=ICE,
+##		     copyNumber=copyNumber,
+##		     is.log=is.log,
+##		     ##EMIT.THR=EMIT.THR,
+##		     scaleSds=scaleSds,
+##		     log.initial=log.initial,
+##		     normalIndex=normalIndex,
+##		     prGenotypeHomozygous=prGenotypeHomozygous,
+##		     prGenotypeMissing=prGenotypeMissing,
+##		     pHetCalledHom=pHetCalledHom,
+##		     pHetCalledHet=pHetCalledHet,
+##		     pHomInNormal=pHomInNormal,
+##		     pHomInRoh=pHomInRoh,
+##		     rohStates=rohStates,
+##		     log.emission=NULL,
+##		     log.gt.emission=NULL,
+##		     log.cn.emission=NULL,
+##		     verbose=verbose,
+##		     ...)
+##	if(trioHmm){
+##		opts <- trioOptions(opts)
+##		offspringId <- sampleNames(object)[object$fatherId != 0 & object$motherId != 0]
+##		trios <- as.matrix(t(sapply(offspringId, findFatherMother, object=object)))
+##		trios <- trios[rowSums(is.na(trios)) == 0, , drop=FALSE]
+##		colnames(trios) <- c("father", "mother", "offspring")
+##		opts$trios <- trios
+##		opts$copyNumber <- FALSE
+##		##trioList <- as(object, "TrioSetList")
+##	}
+##	##opts[["tau"]] <- transitionProbability(object, opts)
+##	if(opts$copyNumber){
+##		##check that the median copy number is near the
+##		##specified copy number for the normal hidden state
+##		##(helps prevent errors from forgetting to take the
+##		##log)
+##		isAutosome <- chromosome(object) <= 22
+##		if(sum(isAutosome) > 1){
+##			med <- median(as.numeric(copyNumber(object)[isAutosome, ]), na.rm=TRUE)
+##			med.normal <- copynumberStates[normalIndex]
+##			delta <- abs(med-med.normal)
+##			if(delta < 0.1){
+##				if(verbose==2) message("The absolute difference between the median copy number and copynumberState[normalIndex] is ", abs(med-med.normal))
+##			} else {
+##				warning("The absolute difference between the median copy number and copynumberState[normalIndex] is ", delta)
+##			}
+##		}
+##	}
+##	if(!trioHmm){
+##		opts <- calculateEmission(object, opts)
+##	}
+##	opts <- as(opts, "HmmOptionList")
+##	opts
 }
 
 ##transitionProbability.oligoSnpSet <- function(object, hmmOptions){

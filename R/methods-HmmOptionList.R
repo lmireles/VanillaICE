@@ -48,7 +48,7 @@ HmmOptionList <- function(object,
 	    marker.index=marker.index,
 	    sample.index=sample.index,
 	    prCopyNumberOutlier=prCopyNumberOutlier,
-	    verbose=verbose)
+	    verbose=verbose, ...)
 	as(res, "HmmOptionList")
 }
 setValidity("HmmOptionList", function(object){
