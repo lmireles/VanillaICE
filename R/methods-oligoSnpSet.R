@@ -130,3 +130,49 @@ setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  }
 		  return(log.emission)
 })
+
+
+setAs("oligoSnpSet", "data.frame",
+      function(from, to){
+	      browser()
+	      cn <- copyNumber(from)
+	      gt <- calls(from)
+	      ##b <- baf(object)[marker.index, sample.index, ]
+	      ##r <- logR(object)[marker.index, sample.index, ]
+	      md <- mindist(object)[marker.index, sample.index]
+##	      if(is.ff){
+##		      close(baf(object))
+##		      close(logR(object))
+##		      close(mindist(object))
+##	      }
+##	      id <- matrix(c("father", "mother", "offspring"), nrow(b), ncol(b), byrow=TRUE)
+##	      empty <- rep(NA, length(md))
+	      ## A trick to add an extra panel for genes and cnv
+	      ##df <- rbind(df, list(as.integer(NA), as.numeric(NA), as.numeric(NA), as.factor("genes")))
+	      ## The NA's are to create extra panels (when needed for lattice plotting)
+##	      id <- c(as.character(id), rep("min dist",length(md)))##, c("genes", "CNV"))
+	      cn <- as.numeric(cn)
+	      gt <- as.numeric(gt)
+##	      b <- c(as.numeric(b), empty)
+##	      r <- c(as.numeric(r), md)
+##	      x <- rep(position(from),
+##	      x <- rep(position(object)[marker.index], 4)/1e6
+	      is.snp <- rep(isSnp(object)[marker.index], 4)
+	      df <- data.frame(x=x, b=b, r=r, id=id, is.snp=is.snp)
+	      df2 <- data.frame(id=c(as.character(df$id), "genes", "CNV"),
+				b=c(df$b, NA, NA),
+				r=c(df$r, NA, NA),
+				x=c(df$x, NA, NA),
+				is.snp=c(df$is.snp,NA, NA))
+	      df2$id <- factor(df2$id, levels=c("father", "mother", "offspring", "min dist", "genes", "CNV"), ordered=TRUE)
+	      return(df2)
+      })
+
+
+setMethod("xyplot", signature(x="formula", data="oligoSnpSet"),
+	  function(x, data, ...){
+		  stopifnot("range" %in% names(list(...)))
+		  df <- as(data, "data.frame")
+		  ##cn.df <- todf(oligoset, range, )
+		  xyplot(x, df, ...)
+})

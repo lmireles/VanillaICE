@@ -46,3 +46,20 @@ setMethod("hmm2", signature(object="CNSet", hmm.params="HmmOptionList"),
 		  } else rd2 <- fit[[1]]
 		  return(rd2)
 	  })
+
+setMethod("xyplot", signature(x="formula", data="CNSet"),
+	  function(x, data, ...){
+		  stopifnot("range" %in% names(list(...)))
+		  rd <- list(...)[["range"]]
+		  if(!"frame" %in% names(list(...))){
+			  w <- width(rd)
+			  frame <- w/0.05  * 1/2
+		  } else {
+			  frame <- list(...)[["frame"]]
+		  }
+		  marker.index <- featuresInRange(data, rd)
+		  sample.index <- match(sampleNames(data), sampleNames(rd))
+		  cnset <- cnset[marker.index, sample.index]
+		  oligoset <- as(cnset, "oligoSnpSet")
+		  xyplot(x, oligoset, ...)
+})
