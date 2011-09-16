@@ -46,3 +46,4 @@ setGeneric("a2n", function(object) standardGeneric("a2n"))
 setGeneric("a2a", function(object) standardGeneric("a2a"))
 
 
+setGeneric("xyplot", useAsDefault=function(x, data, ...) lattice::xyplot(x, data,...))
