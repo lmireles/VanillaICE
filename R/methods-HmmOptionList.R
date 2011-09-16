@@ -1,9 +1,7 @@
 HmmOptionList <- function(object,
-			  snpsetClass=class(object),
 			  copynumberStates=0:4,
 			  states=paste("state", 1:length(copynumberStates), sep=""),
 			  ICE=FALSE,
-			  copyNumber=TRUE,
 			  is.log=FALSE,
 			  scaleSds=TRUE,
 			  log.initialPr=log(rep(1/length(states), length(states))),
@@ -19,15 +17,15 @@ HmmOptionList <- function(object,
 			  a2n=1,
 			  n2a=1,
 			  a2a=1,
-			  verbose=2L,
-			  prCopyNumberOutlier=0.01,
-			  ...){
+			  verbose=2L, ...){
+	## to support previous API
+	if("prGenotypeHomozygous" %in% names(list(...)))
+		prGtHom <- list(...)[["prGenotypeHomozygous"]]
 ##	new("HmmOptionList",
-	res <- list(snpsetClass=snpsetClass,
+	res <- list(snpsetClass=class(object),
 	    copynumberStates=copynumberStates,
 	    states=states,
 	    ICE=ICE,
-	    copyNumber=copyNumber,
 	    is.log=is.log,
 	    scaleSds=scaleSds,
 	    log.initialPr=log.initialPr,
@@ -43,38 +41,43 @@ HmmOptionList <- function(object,
 	    a2n=a2n,
 	    n2a=n2a,
 	    a2a=a2a,
-	    prCopyNumberOutlier=prCopyNumberOutlier,
-	    verbose=verbose, ...)
-	as(res, "HmmOptionList")
+	    verbose=verbose)
+	hmm.opts <- as(res, "HmmOptionList")
+	stopifnot(validObject(hmm.opts))
+	return(hmm.opts)
 }
 setValidity("HmmOptionList", function(object){
 	##ice <- ICE(object)
 	ice <- object$ICE
+	S <- length(object$states)
 	if(!ice){
-		S <- length(states(object))
-		check <- S == length(object$prGtHom)
-		if(!check) return(FALSE)
-		check <- S == length(object$prGtMis)
-		if(!check) return(FALSE)
-		check <- S == length(object$copynumberStates)
-		if(!check) return(FALSE)
-		check <- S == length(object$log.initialPr)
-		if(!check) return(FALSE)
-		check <- sum(exp(object$log.initialPr)) == 1
-		if(!check) return(FALSE)
-		if(!is.null(object$marker.index)){
-			check <- all(object$marker.index %in% seq(length=nrow(object)))
+		if(object$snpsetClass != "CopyNumberSet"){
+			check <- S == length(object$prGtHom)
+			if(!check) return(FALSE)
+			check <- S == length(object$prGtMis)
 			if(!check) return(FALSE)
 		}
-		if(!is.null(object$sample.index)){
-			check <- all(object$sample.index %in% seq(length=ncol(object)))
+		if(object$snpsetClass != "SnpSet"){
+			check <- S == length(object$copynumberStates)
 			if(!check) return(FALSE)
 		}
 	} else{
-		FALSE
+		if(!length(object$prHomInNormal) == 1) return(FALSE)
+		if(!length(object$prHomInRoh) == 1) return(FALSE)
+		if(!length(object$prHetCalledHet)==1) return(FALSE)
+		if(!length(object$prHetCalledHom)==1) return(FALSE)
 	}
+	check <- S == length(object$log.initialPr)
+	if(!check) return(FALSE)
+	check <- sum(exp(object$log.initialPr)) == 1
+	if(!check) return(FALSE)
 	TRUE
 })
+
+setMethod("show", signature(object="HmmOptionList"),
+	  function(object){
+		  print(ls.str(object))
+	  })
 
 
 
