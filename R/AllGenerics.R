@@ -11,7 +11,6 @@ setGeneric("segmentData<-", function(object, value) standardGeneric("segmentData
 ##RangedDataCn generics
 setGeneric("LLR", function(object) standardGeneric("LLR"))
 setGeneric("nMarkers", function(object) standardGeneric("nMarkers"))
-setGeneric("state", function(object) standardGeneric("state"))
 setGeneric("rd2df", function(object, hmm.params, ...) standardGeneric("rd2df"))
 ##setGeneric("plot", useAsDefault=function(x,y,...) graphics::plot(x,y,...))
 ##plot <- function(object, hmm.params, ...) UseMethod("plot")
