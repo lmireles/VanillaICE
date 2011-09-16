@@ -3,7 +3,7 @@ importClassesFrom(methods, ANY, character, data.frame, "function", integer, matr
 importMethodsFrom(methods, initialize, show)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
 importMethodsFrom(Biobase, sampleNames)
-importMethodsFrom(oligoClasses, open, close)
+importMethodsFrom(oligoClasses, open, close, coverage2, state)
 importFrom(oligoClasses, RangedDataHMM)
 importFrom(methods, "@<-", callNextMethod, new, validObject)
 ##importFrom(graphics, plot)
@@ -11,6 +11,6 @@ importFrom(stats, update)
 importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext)
 export(hmm.setup, HmmOptionList, robustSds, centerAutosomesAt)
 ##export(plot)
-exportMethods("hmm", "nMarkers", "LLR")
+exportMethods("hmm", "nMarkers", "LLR", "xyplot")
 
 
