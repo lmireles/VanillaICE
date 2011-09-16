@@ -257,6 +257,9 @@ icePlatforms <- function(){
 	  "pd.mapping250k.nsp, pd.mapping250k.sty")
 }
 
+
+
+
 ##genotypeEmissionCrlmm <- function(genotypes, conf,
 ##				  pHetCalledHom=0.001,
 ##				  pHetCalledHet=0.995,
@@ -264,20 +267,15 @@ icePlatforms <- function(){
 ##				  pHomInRoh=0.999,  ##Pr(AA or BB | region of homozygosity)
 ##				  annotation){
 genotypeEmissionCrlmm <- function(object, hmmOptions){
-	if(!annotation(object) %in% icePlatforms()){
-		message("ICE is TRUE, but hapmap crlmm confidence scores for ", annotation(object), " are not available. Using crlmm confidence scores from HapMap samples assayed on the Affy 6.0 platform.")
+	if(annotation(object) == "pd.genomewidesnp.6"){
 		annotation <- "genomewidesnp6"
-	} else {
-		if(annotation(object) == "pd.genomewidesnp.6"){
-			annotation <- "genomewidesnp6"
-		} else annotation <- annotation(object)
-	}
+	} else annotation <- annotation(object)
 	loader(paste(annotation, "Conf.rda", sep=""), .vanillaIcePkgEnv, "VanillaICE")
 	hapmapP <- getVarInEnv("reference")
-	pHetCalledHom <- hmmOptions[["pHetCalledHom"]]
-	pHetCalledHet <- hmmOptions[["pHetCalledHet"]]
-	pHomInNormal <- hmmOptions[["pHomInNormal"]]
-	pHomInRoh <- hmmOptions[["pHomInRoh"]]
+	pHetCalledHom <- hmmOptions[["prHetCalledHom"]]
+	pHetCalledHet <- hmmOptions[["prHetCalledHet"]]
+	pHomInNormal <- hmmOptions[["prHomInNormal"]]
+	pHomInRoh <- hmmOptions[["prHomInRoh"]]
 	if(length(annotation(object)) < 1) stop("must specify annotation")
 	GT <- as.integer(calls(object))
 	GTconf <- confs(object)
