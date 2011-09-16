@@ -123,47 +123,60 @@ setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 })
 
 
-setAs("oligoSnpSet", "data.frame",
-      function(from, to){
-	      browser()
-	      cn <- copyNumber(from)
-	      gt <- calls(from)
-	      ##b <- baf(object)[marker.index, sample.index, ]
-	      ##r <- logR(object)[marker.index, sample.index, ]
-	      md <- mindist(object)[marker.index, sample.index]
-##	      if(is.ff){
-##		      close(baf(object))
-##		      close(logR(object))
-##		      close(mindist(object))
-##	      }
-##	      id <- matrix(c("father", "mother", "offspring"), nrow(b), ncol(b), byrow=TRUE)
-##	      empty <- rep(NA, length(md))
-	      ## A trick to add an extra panel for genes and cnv
-	      ##df <- rbind(df, list(as.integer(NA), as.numeric(NA), as.numeric(NA), as.factor("genes")))
-	      ## The NA's are to create extra panels (when needed for lattice plotting)
-##	      id <- c(as.character(id), rep("min dist",length(md)))##, c("genes", "CNV"))
-	      cn <- as.numeric(cn)
-	      gt <- as.numeric(gt)
-##	      b <- c(as.numeric(b), empty)
-##	      r <- c(as.numeric(r), md)
-##	      x <- rep(position(from),
-##	      x <- rep(position(object)[marker.index], 4)/1e6
-	      is.snp <- rep(isSnp(object)[marker.index], 4)
-	      df <- data.frame(x=x, b=b, r=r, id=id, is.snp=is.snp)
-	      df2 <- data.frame(id=c(as.character(df$id), "genes", "CNV"),
-				b=c(df$b, NA, NA),
-				r=c(df$r, NA, NA),
-				x=c(df$x, NA, NA),
-				is.snp=c(df$is.snp,NA, NA))
-	      df2$id <- factor(df2$id, levels=c("father", "mother", "offspring", "min dist", "genes", "CNV"), ordered=TRUE)
-	      return(df2)
-      })
+
+##todataframe <- function(object, mm){
+##	browser()
+##	stopifnot(nrow(mm.df) == nrow(object))
+##	cn <- as.numeric(copyNumber(object))
+##	gt <- as.integer(calls(object))
+##	range.index <- mm.df$query
+##	range.index <- matrix(range.index, nrow(object)
+##
+##	x <- rep(position(object)/1e6, ncol(from))
+##
+##	      cn <- as.numeric(cn)
+##	      gt <- as.integer(gt)
+##	      ##x <- rep(position(object)[marker.index], 4)/1e6
+##	      is.snp <- rep(isSnp(from), ncol(from))
+##	      id <- rep(sampleNames(from), each=nrow(from))
+##	      df <- data.frame(x=x, cn=cn, gt=gt, id=id,
+##			       is.snp=is.snp,
+##			       stringsAsFactors=FALSE)
+##
+##}
 
 
-setMethod("xyplot", signature(x="formula", data="oligoSnpSet"),
-	  function(x, data, ...){
-		  stopifnot("range" %in% names(list(...)))
+
+setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDataCNV"),
+	  function(x, data, range, frame=0L, ...){
+		  mm <- findOverlaps(range, data, frame=frame)
+		  mm.df <- data.frame(mm)
+		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
+		  marker.index <- unique(mm.df$subject)
+		  ##marker.index <- featuresInRange(data, rd, FRAME=frame)
+		  sample.index <- match(sampleNames(range), sampleNames(data))
+		  sample.index <- unique(sample.index)
+		  data <- data[marker.index, sample.index]
+		  mm.df$subject <- match(mm.df$featureNames, featureNames(data))
 		  df <- as(data, "data.frame")
-		  ##cn.df <- todf(oligoset, range, )
-		  xyplot(x, df, ...)
+		  ##tmp <- todataframe(data, mm.df)
+		  list.x <- as.character(x)
+		  i <- grep("|", list.x, fixed=TRUE)
+		  if(length(i) > 0){
+			  zvar <- list.x[[i]]
+			  zvar <- strsplit(zvar, " | ", fixed=T)[[1]][[2]]
+			  if(zvar == "range"){
+				  tmp <- tryCatch(df$range <- mm.df$query, error=function(e) NULL)
+			  }
+		  }
+		  xyplot(x, df,
+			 range=range,
+			 gt=df$gt,
+			 is.snp=df$is.snp,
+			 ...)
+	  })
+
+setMethod("xyplot", signature(x="formula", data="SnpSet"),
+	  function(x, data, ...){
+		  xyplot2(x, data, ...)
 })
