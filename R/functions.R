@@ -602,13 +602,13 @@ trioOptions <- function(opts,
 ##
 ##	}
 ##})
-centerCopyNumber <- function(x, centerCN=TRUE, at=2, ...){
-	if(!centerCN) return(x) ## do nothing
-	cn <- copyNumber(x)
+centerAutosomesAt <- function(x, at, ...){
+	stopifnot(!missing(at))
+	marker.index <- which(chromosome(x) <= 23)
+	cn <- copyNumber(x)[marker.index, ]
 	meds <- apply(cn, 2, median, na.rm=TRUE)
-	cn.cen <- sweep(cn, 2, meds)
-	cn <- cn.cen + at
-	copyNumber(x) <- cn
+	cn.cen <- sweep(cn, 2, meds) + at
+	copyNumber(x)[marker.index, ] <- cn.cen
 	return(x)
 }
 
