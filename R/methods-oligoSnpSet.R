@@ -1,10 +1,13 @@
 setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
-		  log.emission <- emit(object, hmm.params)
-		  dimnames(log.emission) <- list(featureNames(object),
-						 sampleNames(object),
-						 states(hmm.params))
-		  viterbi(object, hmm.params, log.E=log.emission)
+		  log.beta.cn <- cnEmission(object, hmm.params)
+		  log.beta.gt <- gtEmission(object, hmm.params)
+		  ##log.emission <- emit(object, hmm.params)
+		  log.beta <- log.beta.cn+log.beta.gt
+		  dimnames(log.beta) <- list(featureNames(object),
+					     sampleNames(object),
+					     states(hmm.params))
+		  viterbi(object, hmm.params, log.E=log.beta)
 })
 setMethod("hmm", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
@@ -16,31 +19,6 @@ setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
 		  log.emission <- emit(object, hmm.params)
 		  viterbi(object, hmm.params, ...)
 })
-
-
-##setMethod("hmm", signature(object="oligoSnpSet", hmm.params="missing"),
-##	  function(object, hmm.params, ...){
-##		  ##browser()
-##		  ##viterbi(object, hmm.params, ...)
-##		  hmmoptions <- hmm.setup(object=object, ...)
-##		  callGeneric(object, hmmoptions, ...)
-##		  ##hmm(object, hmmoptions)
-##})
-##setMethod("hmm", signature(object="CopyNumberSet", hmm.params="missing"),
-##	  function(object, hmm.params, ...){
-##		  ##viterbi(object, hmm.params, ...)
-##		  hmmoptions <- hmm.setup(object=object, ...)
-##		  ##hmm(object, hmmoptions)
-##		  callGeneric(object, hmmoptions, ...)
-##})
-##setMethod("hmm", signature(object="SnpSet", hmm.params="missing"),
-##	  function(object, hmm.params, ...){
-##		  ##viterbi(object, hmm.params, ...)
-##		  hmmoptions <- hmm.setup(object=object, ...)
-##		  ##hmm(object, hmmoptions)
-##		  callGeneric(object, hmmoptions, ...)
-##})
-
 
 
 setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
@@ -96,6 +74,8 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  return(rd)
 	  })
 
+
+
 setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params){
 		  ICE <- ICE(hmm.params)
@@ -108,8 +88,9 @@ setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  sds <- robustSds2(copyNumber(object))
 			  cnConfidence(object) <- 1/sds
 		  }
-		  log.cn.emission <- calculateEmission.copynumber2(object,
-								   hmm.params)
+		  ##log.cn.emission <- calculateEmission.copynumber2(object,
+		  ##                                                 hmm.params)
+		  log.cn.emission <- calculateEmission(object, hmm.params)
 		  if(!ICE){
 			  log.gt.emission <- calculateEmission.genotype(object, hmm.params)
 		  } else {

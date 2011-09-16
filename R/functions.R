@@ -31,20 +31,57 @@ robustSds <- function(x, takeLog=FALSE, ...){
 
 ## many markers have a level of noise that is far greater than the
 ## noise level of the sample.
-## -- though the uncertainty estimates for the marker may be poorly
+##
+## -- while the uncertainty estimates for the marker may be poorly
 ##    estimated, shrinking to the noise level of the sample may have
 ##    the effect of giving uncertainty estimates for the marker that
 ##    are much too small
-##
-## But if we estimate emission probabilities using a mixture of
-## normals and a uniform for the outlier distribution, we may be ok.
 robustSds2 <- function(x, DF.PRIOR=10, nSamples, takeLog=FALSE, ...){
 	if(!is.matrix(x)) stop("x is not a matrix")
 	if(takeLog) x <- log2(x)
+
+	## the posterior is IG(nu_n/2, nu_n * sigma2_n (theta)/2)
+	## nu_n = nu_0 + n
+	## sigma2_n(theta) = 1/nu_n * [nu_0 * sigma^2_0 + n*s^2_n(theta)],
+	## where s^2_n(theta) = Sum(yi-theta)^2/n
+	##
+	##
+	## 1/sigma^2 ~ G(nu_0/2, nu_0/2 * sigma^2_0)
+	## E(sigma^2) = sigma^2_0 * nu_0/2 /(nu_0/2 -1)
+	##
+	## 1/sigma^2 | ... ~ G(nu_n/2, nu_n * sigma^2_n/2)
+	##
+	## nu_n = nu_0 + n
+	## sigma^2_n = 1/nu_n *[nu_0*sigma^2_0 + (n-1)*s^2 + k_0*n/k_n*(ybar-mu_0)^2]
+	##
+	## prior
+	##
+	## data
+	##
+	## posterior inference
+	sigma2.0 <- apply(x, 2, MAD, na.rm=TRUE)
+	nu0 <- 100
+	nn <- ncol(x)
+	nu.n <- nu0+nn
+	s2 <- rowMAD(x, na.rm=TRUE)
+	k0 <- 1 ## ?
+	kn <- k0+nn
+	ybar <- rowMedian(x, na.rm=TRUE)
+	mu0 <- median(ybar)
+	##
+	## E[1/sigma2_g | ... ] = sigma^2n/2 * nu_n / (nu_n/2 - 1)
+
+
+
+
+	##
+##	sigma.marker <- rowMAD(x, na.rm=TRUE)
+##	sigma.sample <- apply(x, 2, MAD, na.rm=TRUE)
+##	gammahat <- sigma.marker/median(sigma.marker, na.rm=TRUE)
+##	df1 <- nSamples-1
+##	df2 <- length(sds1)-1
 	sds1 <- rowMAD(x, na.rm=TRUE)
-	df1 <- nSamples-1
-	df2 <- length(sds1)-1
-	sds.marker <- (df1*sds.marker + df2*median(sds.marker,na.rm=TRUE))/(df1+df2)
+##	sds.marker <- (df1*sds.marker + df2*median(sds.marker,na.rm=TRUE))/(df1+df2)
 	sds1 <- matrix(sds1, nrow(x), ncol(x))
 	sds2 <- apply(x, 2, "mad", constant=2, na.rm=TRUE)
 	df <- ncol(x)
@@ -103,9 +140,12 @@ getChromosomeArm <- function(object){
 		chrom <- chromosome2integer(chrom)
 	}
 	if(!all(chrom %in% 1:24)){
-			warning("Chromosome annotation is currently available for chromosomes 1-22, X and Y")
-			message("Please add/modify data(chromosomeAnnotation, package='SNPchip') to accomodate special chromosomes")
-			stop()
+			warning("Chromosome annotation is currently available for chromosomes 1-22, X and Y. Other chromosomes or NA's present.")
+			marker.index <- which(chromosome(object) <= 24 & !is.na(chromosome(object)))
+			##message("Please add/modify data(chromosomeAnnotation, package='SNPchip') to accomodate special chromosomes")
+			##stop()
+	} else{
+		marker.index <- seq_along(chrom)
 	}
 	if(!is.integer(pos)) {
 		message("Coerced pos to an integer.")
@@ -115,15 +155,22 @@ getChromosomeArm <- function(object){
 	chromosomeAnnotation <- as.matrix(chromosomeAnnotation)
 	chrAnn <- chromosomeAnnotation
 	uchrom <- unique(SNPchip:::integer2chromosome(chrom))
+	uchrom <- uchrom[!is.na(uchrom)]
 	chromosomeArm <- vector("list", length(uchrom))
-	positionList <- split(pos, chrom)
-	positionList <- positionList[match(unique(chrom), names(positionList))]
-	for(i in seq(along=uchrom)){
+	positionList <- split(pos[marker.index], chrom[marker.index])
+	chr.names <- unique(chrom)
+	chr.names <- as.character(chr.names[!is.na(chr.names)])
+	positionList <- positionList[match(chr.names, names(positionList))]
+	for(i in seq(along=chr.names)){
 		chromosomeArm[[i]] <- as.integer(ifelse(positionList[[i]] <= chrAnn[uchrom[i], "centromereEnd"], 0, 1))
 	}
 	chromosomeArm <- unlist(chromosomeArm)
+	chrom <- chrom[marker.index]
 	chromosomeArm <- cumsum(c(0, diff(chromosomeArm) != 0 | diff(chrom) != 0))
 	chromosomeArm <- chromosomeArm+1 ##start at 1
+	res <- rep(NA, nrow(object))
+	res[marker.index] <- chromosomeArm
+	return(res)
 }
 
 viterbi <- function(object,
@@ -148,6 +195,7 @@ viterbi <- function(object,
 	if(altered2normal <= 0) stop("altered2normal must be > 0")
 	if(altered2altered <= 0) stop("altered2altered must be > 0")
 	##
+	## arm can contain NA's for invalid chromosomes or NA's
 	arm <- getChromosomeArm(object)
 	normalIndex <- normalIndex(hmm.params)##[["normalIndex"]]
 	if(normalIndex < 1 | normalIndex > dim(log.E)[[3]]){
@@ -963,3 +1011,118 @@ findFatherMother <- function(offspringId, object){
 ####			      panel.axis(side, text.cex=text.cex)}, ...)
 ##	return(fig)
 ##}
+
+cnEmission <- function(object, hmmOptions){
+	cnStates <- copynumberStates(hmmOptions)##[["copynumberStates"]]
+	verbose <- verbose(hmmOptions)
+	states <- states(hmmOptions)#[["states"]]
+	is.log <- is.log(hmmOptions)#
+	fn <- featureNames(object)
+	S <- length(states)
+	CN <- copyNumber(object)
+	cnStates <- copynumberStates(hmmOptions)##[["copynumberStates"]]
+	verbose <- verbose(hmmOptions)
+	states <- states(hmmOptions)#[["states"]]
+	is.log <- is.log(hmmOptions)#
+	fn <- featureNames(object)
+	S <- length(states)
+	prOutlier <- hmmOptions$prCopyNumberOutlier
+	CN <- copyNumber(object)
+##		  if(any(rowSums(is.na(CN)) == ncol(CN))){
+##			  stop("Some rows have all missing values. Exclude these before continuing.")
+##		  }
+	if(any(colSums(is.na(CN)) == nrow(CN))){
+		stop("Some samples have all missing values. Exclude these samples before continuing.")
+	}
+	cn.conf <- cnConfidence(object)
+	if(all(is.na(cn.conf))){
+		message("cnConfidence missing.  Using MAD")
+		autosome.index <- which(chromosome(object) < 23)
+		sds <- apply(CN[autosome.index, ], 2, mad, na.rm=TRUE)
+		##sds <- robustSds2(copyNumber(object))
+		sds <- matrix(sds, nrow(CN), ncol(CN), byrow=TRUE)
+		##cnConfidence(object) <- 1/sds
+	} else {
+		sds <- 1/cn.conf
+	}
+	tmp <- rowSums(!is.finite(sds))
+	if(any(sds == 0, na.rm=TRUE)){
+		warning("some sds were zero.  Replacing with typical value")
+		sds[sds == 0] <- median(sds, na.rm=TRUE)
+	}
+	emission.cn <- array(NA, dim=c(nrow(object), ncol(object), S))
+	##		  if(!is.matrix(cnStates))
+	##			  cnStates <- matrix(cnStates, nrow(object), length(cnStates), byrow=TRUE)
+	if(is.log){
+		MIN.CN <- -10
+		MAX.CN <- 2.5
+	} else {
+		MIN.CN <- 0
+		MAX.CN <- 10
+	}
+	##		  if(any(CN < MIN.CN, na.rm=TRUE)) CN[CN < MIN.CN] <- MIN.CN
+	##		  if(any(CN > MAX.CN, na.rm=TRUE)) CN[CN > MAX.CN] <- MAX.CN
+	for(j in 1:ncol(object)){
+		cn <- CN[, j, drop=FALSE]
+		sd <- sds[, j, drop=FALSE]
+		##cn <- matrix(CN[, j], nrow(object), ncol(cnStates))
+		##sd <- matrix(sds[, j], nrow(object), ncol(cnStates))
+		k <- which(!is.na(as.numeric(cn)))
+		##emission.cn <- rep(NA, length(as.vector(cnStates)))
+		old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
+		cnvector <- as.numeric(cn)[k]
+		for(l in seq_along(cnStates)){
+			mu <- cnStates[l]
+			tmp <- (1-prOutlier) * dnorm(x=cnvector,
+						     mean=cnStates[l],
+						     sd=as.numeric(sd)[k]) +
+							     prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
+			emission.cn[k, j, l] <- tmp
+		}
+	}
+	return(log(emission.cn))
+}
+
+gtEmission <- function(object, hmmOptions){
+	ICE <- ICE(hmmOptions)
+	if(!ICE){
+		states <- states(hmmOptions)
+		p <- prGtHom(hmmOptions)
+		prGenotypeMissing <- prGtMis(hmmOptions)
+		verbose <- verbose(hmmOptions)
+		stopifnot(length(p) == length(states))
+		if(!is.numeric(calls(object))) stop("genotypes must be integers (1=AA, 2=AB, 3=BB) or NA (missing)")
+		GT <- calls(object)
+		emission <- array(GT, dim=c(nrow(GT), ncol(GT), length(states)), dimnames=list(featureNames(object), sampleNames(object), states))
+		missingGT <- any(is.na(GT))
+		if(missingGT){
+			if(verbose==2) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
+		}
+		for(s in seq(along=states)){
+			tmp <- GT
+			tmp[tmp == 1 | tmp == 3] <- p[s]
+			tmp[tmp == 2] <- 1-p[s]
+			if(missingGT){
+				tmp[is.na(tmp)] <- prGenotypeMissing[s]
+			}
+			emission[, , s] <- tmp
+		}
+		logemit <- log(emission)
+		return(logemit)
+	} else {
+		stop('need to update ICE option')
+		log.gt.emission <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
+					 dimnames=list(featureNames(object),
+					 sampleNames(object),
+					 states))
+		tmp <- genotypeEmissionCrlmm(object, hmm.params)
+		rohStates <- which(hmm.params[["rohStates"]])
+		notRohState <- which(!hmm.params[["rohStates"]])
+		for(j in rohStates){
+			log.gt.emission[, , j] <- tmp[, , "ROH"]
+		}
+		for(j in notRohState){
+			log.gt.emission[, , j] <- tmp[, , "normal"]
+		}
+	}
+}
