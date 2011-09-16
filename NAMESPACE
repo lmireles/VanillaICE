@@ -9,8 +9,8 @@ importFrom(methods, "@<-", callNextMethod, new, validObject)
 ##importFrom(graphics, plot)
 importFrom(stats, update)
 importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext)
-export(hmm.setup, robustSds)
+export(hmm.setup, HmmOptionList, robustSds, centerAutosomesAt)
 ##export(plot)
-exportMethods("hmm", "hmm2", "nMarkers", "LLR", "state") ##"rd2df", "plot")
+exportMethods("hmm", "nMarkers", "LLR")
 
 
