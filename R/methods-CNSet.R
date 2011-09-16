@@ -55,7 +55,7 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 			  by.chromosome <- list(...)[["by.chromosome"]]
 		  } else by.chromosome <- TRUE
 		  if("k" %in% names(list(...))){
-			  by.chromosome <- list(...)[["k"]]
+			  k <- list(...)[["k"]]
 		  } else k <- 5
 		  if("sample.index" %in% names(list(...))){
 			  sample.index <- list(...)[["sample.index"]]
@@ -80,14 +80,6 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 				  oligoSet <- as(cnset.batch, "oligoSnpSet")
 				  oligoSet <- oligoSet[order(position(oligoSet)), ]
 				  rm(cnset.batch)
-				  gc()
-				  cn <- copyNumber(oligoSet)
-				  if(is.autosome){
-					  sds <- apply(cn, 2, mad, na.rm=TRUE)
-				  }
-				  cnConfidence(oligoSet) <- matrix(1/sds, nrow(oligoSet), ncol(oligoSet),
-								   byrow=TRUE)
-				  rm(cn, sds)
 				  oligoSet <- centerAutosomesAt(oligoSet, at=2)
 				  hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
 				  results[[m]] <- hmm(oligoSet, hmmOpts, k=k)

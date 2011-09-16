@@ -771,6 +771,56 @@ findFatherMother <- function(offspringId, object){
 ##	return(fig)
 ##}
 
+invalidCnConfidence <- function(x){
+	is.na(x) | x == 0 | is.nan(x) | is.infinite(x)
+}
+
+getSds <- function(object){
+	cn.conf <- cnConfidence(object)
+	stopifnot(all(chromosome(object) <= 24))
+	notvalid <- invalidCnConfidence(cn.conf)
+	CN <- copyNumber(object)
+	if(any(notvalid)){
+		message("cnConfidence missing.  Using MAD")
+		marker.index <- which(chromosome(object) < 23)
+		if(length(marker.index) == 0){
+			sds <- matrix(NA, nrow(cn.conf), ncol(cn.conf))
+			## sex chromosomes
+			marker.index.list <- split(seq_len(nrow(object)), chromosome(object))
+			for(i in seq_along(marker.index.list)){
+				marker.index <- marker.index.list[[1]]
+				tmp <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
+				sds[marker.index, ] <- matrix(tmp, length(marker.index), ncol(CN), byrow=TRUE)
+			}
+		}  else {  ## autosomes present
+			s <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
+			sds <- matrix(s, nrow(CN), ncol(CN), byrow=TRUE)
+		}
+		valid <- !notvalid
+		if(any(valid)){
+			sds[valid] <- 1/cn.conf[valid]
+		}
+	} else { ## all valid confidence scores
+		sds <- 1/cn.conf
+	}
+	notvalid <- invalidCnConfidence(sds)
+	stopifnot(any(!notvalid))
+	return(sds)
+}
+
+validChromosomeIndex <- function(object){
+	index <- which(chromosome(object) <= 24 & !is.na(chromosome(object)) & !is.na(position(object)))
+	if(length(index) < 1){
+		stop("Chromosome must be 1-24 and physical position \n
+                      can not be missing.  See chromosome() and position().\n
+                      See integer2chromosome(1:24) for integer codes used by\n
+                      VanillaICE.")
+	}
+	return(index)
+}
+
+
+
 cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
 	cnStates <- hmmOptions$copynumberStates##[["copynumberStates"]]
 	verbose <- hmmOptions$verbose
