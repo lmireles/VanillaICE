@@ -19,8 +19,6 @@ HmmOptionList <- function(object,
 			  a2n=1,
 			  n2a=1,
 			  a2a=1,
-			  marker.index=NULL,
-			  sample.index=NULL,
 			  verbose=2L,
 			  prCopyNumberOutlier=0.01,
 			  ...){
@@ -45,32 +43,31 @@ HmmOptionList <- function(object,
 	    a2n=a2n,
 	    n2a=n2a,
 	    a2a=a2a,
-	    marker.index=marker.index,
-	    sample.index=sample.index,
 	    prCopyNumberOutlier=prCopyNumberOutlier,
 	    verbose=verbose, ...)
 	as(res, "HmmOptionList")
 }
 setValidity("HmmOptionList", function(object){
-	ice <- ICE(object)
+	##ice <- ICE(object)
+	ice <- object$ICE
 	if(!ice){
 		S <- length(states(object))
-		check <- S == length(prGtHom(object))
+		check <- S == length(object$prGtHom)
 		if(!check) return(FALSE)
-		check <- S == length(prGtMis(object))
+		check <- S == length(object$prGtMis)
 		if(!check) return(FALSE)
-		check <- S == length(copynumberStates(object))
+		check <- S == length(object$copynumberStates)
 		if(!check) return(FALSE)
-		check <- S == length(log.initialPr(object))
+		check <- S == length(object$log.initialPr)
 		if(!check) return(FALSE)
-		check <- sum(exp(log.initialPr(object))) == 1
+		check <- sum(exp(object$log.initialPr)) == 1
 		if(!check) return(FALSE)
-		if(!is.null(markerIndex(object))){
-			check <- all(markerIndex(object) %in% seq(length=nrow(object)))
+		if(!is.null(object$marker.index)){
+			check <- all(object$marker.index %in% seq(length=nrow(object)))
 			if(!check) return(FALSE)
 		}
-		if(!is.null(sampleIndex(object))){
-			check <- all(sampleIndex(object) %in% seq(length=ncol(object)))
+		if(!is.null(object$sample.index)){
+			check <- all(object$sample.index %in% seq(length=ncol(object)))
 			if(!check) return(FALSE)
 		}
 	} else{
