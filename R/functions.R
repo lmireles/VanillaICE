@@ -1052,7 +1052,7 @@ findFatherMother <- function(offspringId, object){
 ##	return(fig)
 ##}
 
-cnEmission <- function(object, hmmOptions){
+cnEmission <- function(object, hmmOptions, k=3){
 	cnStates <- copynumberStates(hmmOptions)##[["copynumberStates"]]
 	verbose <- verbose(hmmOptions)
 	states <- states(hmmOptions)#[["states"]]
@@ -1060,14 +1060,7 @@ cnEmission <- function(object, hmmOptions){
 	fn <- featureNames(object)
 	S <- length(states)
 	CN <- copyNumber(object)
-	cnStates <- copynumberStates(hmmOptions)##[["copynumberStates"]]
-	verbose <- verbose(hmmOptions)
-	states <- states(hmmOptions)#[["states"]]
-	is.log <- is.log(hmmOptions)#
-	fn <- featureNames(object)
-	S <- length(states)
 	prOutlier <- hmmOptions$prCopyNumberOutlier
-	CN <- copyNumber(object)
 ##		  if(any(rowSums(is.na(CN)) == ncol(CN))){
 ##			  stop("Some rows have all missing values. Exclude these before continuing.")
 ##		  }
@@ -1107,17 +1100,18 @@ cnEmission <- function(object, hmmOptions){
 		sd <- sds[, j, drop=FALSE]
 		##cn <- matrix(CN[, j], nrow(object), ncol(cnStates))
 		##sd <- matrix(sds[, j], nrow(object), ncol(cnStates))
-		k <- which(!is.na(as.numeric(cn)))
+		I <- which(!is.na(as.numeric(cn)))
 		##emission.cn <- rep(NA, length(as.vector(cnStates)))
 		old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-		cnvector <- as.numeric(cn)[k]
+		cnvector <- as.numeric(cn)[I]
+		prOutlier <- probabilityOutlier(cnvector, k=k)
 		for(l in seq_along(cnStates)){
 			mu <- cnStates[l]
 			tmp <- (1-prOutlier) * dnorm(x=cnvector,
 						     mean=cnStates[l],
-						     sd=as.numeric(sd)[k]) +
+						     sd=as.numeric(sd)[I]) +
 							     prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
-			emission.cn[k, j, l] <- tmp
+			emission.cn[I, j, l] <- tmp
 		}
 	}
 	return(log(emission.cn))
@@ -1170,3 +1164,31 @@ gtEmission <- function(object, hmmOptions){
 		}
 	}
 }
+
+
+probabilityOutlier <- function(cn, k=3){
+	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
+	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
+	rmeds <- runmed(cn, k)
+	delta <- cn-rmeds
+	mu <- 0
+	sigma=c(0.5, 0.2)
+	tau <- 0.01
+	epsilon <- 2; counter <- 1
+	while(epsilon > 0.01){
+		gamma <- (tau * dnorm(delta, mu, sigma[1]))/ (tau * dnorm(delta, mu, sigma[1]) + (1-tau)*dnorm(delta, mu, sigma[2]))
+		## gamma near 1 is likely an outlier
+		## gamma near 0 is likely not an outlier
+		tau.next <- mean(gamma)
+		epsilon <- abs(tau.next - tau)
+		tau <- tau.next
+		counter <- counter+1
+		if(counter > 10) break()
+	}
+	## plot(delta, gamma)
+	return(gamma)
+}
+
+
+
+
