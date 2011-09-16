@@ -13,10 +13,12 @@ LazyLoad: yes
 Collate:  AllGenerics.R
           AllClasses.R
 	  emission-methods.R
+	  methods-CopyNumberSet.R
 	  methods-oligoSnpSet.R
 	  methods-RangedDataHMM.R
 	  methods-HmmOptionList.R
 	  methods-CNSet.R
+	  methods-SnpSet.R
 	  functions.R
 	  utils.R
 	  zzz.R
