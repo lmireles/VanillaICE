@@ -134,6 +134,7 @@ oligoSet <- new("oligoSnpSet",
 		callProbability=locusLevelData[["crlmmConfidence"]],
 		annotation=locusLevelData[["platform"]])
 oligoSet <- oligoSet[!is.na(chromosome(oligoSet)), ]
+oligoSet <- oligoSet[chromosome(oligoSet) < 3, ]
 @
 
 If confidence scores or inverse standard errors for the copy number
@@ -223,24 +224,42 @@ legend("topleft", fill=cols, legend=hmmOpts$states, bty="n")
 
 \subsection{ICE HMM}
 
-To compute emission probabilities that incorporate the \Rpackage{crlmm}
-genotype confidence scores, (i) set \Robject{ICE} to \texttt{TRUE} in
-the \Robject{hmm.setup} function and (ii) indicate which of the states
-are expected to be largely homozygous (\texttt{rohStates}).
+To compute emission probabilities that incorporate the
+\Rpackage{crlmm} genotype confidence scores, (i) set \Robject{ICE} to
+\texttt{TRUE} in the \Robject{hmm.setup} function and (ii) indicate
+which of the states are expected to be largely homozygous
+(\texttt{rohStates}).  Note that this option is limited too a few
+platforms and the Affy 100k platforms is not one of them.
 
 <<ice>>=
 hmmOpts <- hmm.setup(oligoSet,
 		     ICE=TRUE,
-		     copynumberStates=log2(c(1, 2, 2, 3)),
-		     states=c("hem-del", "ROH", "normal", "amp"),
+		     copynumberStates=log2(c(0, 1, 2, 2, 3)),
+		     states=c("hom-del", "hem-del", "ROH", "normal", "amp"),
 		     normalIndex=3,
-		     log.initialP=rep(log(1/4), 4),
-		     rohStates=c(TRUE, TRUE, FALSE, FALSE))
-fit.ice <- hmm(oligoSet, hmmOpts)
+		     log.initialPr=rep(log(1/5), 5),
+		     rohStates=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+res <- tryCatch(hmm(oligoSet, hmmOpts),
+		error=function(e) "platform not supported")
+print(res)
+## supported platforms
+VanillaICE:::icePlatforms()
 @
 
+For the purpose of illustration, we assign 'genomewidesnp6' to the
+annotation slot since this platform is supported.
+
+<<iceIllustration>>=
+ann <- annotation(oligoSet)
+annotation(oligoSet) <- "genomewidesnp6"
+fit.ice <- hmm(oligoSet, hmmOpts)
+fit.ice
+annotation(oligoSet) <- ann
+@
+
+
 <<fig3, fig=TRUE, width=8, echo=FALSE>>=
-fit.chr1 <- fit.ice[fit.ice$chrom==1, ]
+fit.chr1 <- fit.ice[chromosome(fit.ice)==1, ]
 widths <- width(fit.chr1)
 fit.chr1 <- fit.chr1[order(widths,decreasing=TRUE),]
 par(las=1)
@@ -253,8 +272,8 @@ y <- c(-1,-1,-0.9,-0.9)
 polygon(x=c(xx, rev(xx)), y=y, col="white")
 for(i in 1:nrow(fit.chr1)){
 	polygon(x=c(sts[i], ends[i], ends[i], sts[i]),
-		y=y, col=cols[fit.chr1$state[i]],
-		border=cols[fit.chr1$state[i]])
+		y=y, col=cols[state(fit.chr1)[i]],
+		border=cols[state(fit.chr1)[i]])
 }
 legend("topleft", fill=cols, legend=hmmOpts$states, bty="n")
 @
@@ -295,15 +314,17 @@ snpSet <- new("SnpSet",
 	      callProbability=locusLevelData[["crlmmConfidence"]],
 	      annotation=locusLevelData[["platform"]])
 featureData(snpSet) <- addFeatureAnnotation(snpSet)
-fvarLabels(snpSet)
+snpSet <- snpSet[chromosome(snpSet) < 3, ]
 snpSet <- snpSet[order(chromosome(snpSet), position(snpSet)), ]
-snpSet <- snpSet[!is.na(chromosome(snpSet)), ]
 hmmOpts <- hmm.setup(snpSet,
 		     states=c("ROH", "normal"),
 		     normalIndex=2,
 		     log.initialP=rep(log(1/2), 2),
 		     prGenotypeHomozygous=c(0.99,0.7),
 		     TAUP=5e7)
+##trace(VanillaICE:::viterbi, browser)
+##trace(VanillaICE:::gtEmission, browser)
+##tmp <- VanillaICE:::gtEmission(snpSet, hmmOpts)
 fit.gt <- hmm(snpSet, hmmOpts)
 @
 
