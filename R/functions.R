@@ -775,13 +775,13 @@ invalidCnConfidence <- function(x){
 	is.na(x) | x == 0 | is.nan(x) | is.infinite(x)
 }
 
-getSds <- function(object){
+getSds <- function(object, verbose=FALSE){
 	cn.conf <- cnConfidence(object)
 	stopifnot(all(chromosome(object) <= 24))
 	notvalid <- invalidCnConfidence(cn.conf)
 	CN <- copyNumber(object)
 	if(any(notvalid)){
-		message("cnConfidence missing.  Using MAD")
+		if(verbose) message("cnConfidence missing.  Using MAD")
 		marker.index <- which(chromosome(object) < 23)
 		if(length(marker.index) == 0){
 			sds <- matrix(NA, nrow(cn.conf), ncol(cn.conf))
