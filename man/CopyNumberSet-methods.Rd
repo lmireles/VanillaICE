@@ -1,40 +1,54 @@
 \name{CopyNumberSet-methods}
 \docType{methods}
 \alias{CopyNumerSet-methods}
-\alias{cnEmission,CopyNumberSet,ANY-method}
 \alias{order,CopyNumberSet-method}
 \alias{sd,CopyNumberSet-method}
+\title{Methods for CopyNumberSet objects}
 
-%\alias{sd,oligoSnpSet-method}
-\title{Methods for estimating copy number standard deviations.}
-
-\description{Estimate the standard deviation for \code{CopyNumberSet}
-  and \code{oligoSnpSet} objects.}
+\description{Methods for objects of class \code{CopyNumberSet}.}
 
 \usage{
 
+%cnEmission(object, stdev, k=5, cnStates=0:4, is.log=FALSE, verbose=TRUE, ...)
+order(..., na.last=TRUE, decreasing=FALSE)
 sd(x, na.rm=TRUE)
+
+
 
 }
 
 \arguments{
 
-  \item{object}{A \code{CopyNumberSet} or \code{oligoSnpSet}}
+%  \item{object}{A \code{CopyNumberSet} or \code{SnpSet} object}
 
-  \item{na.rm}{Logical. }
+  \item{x}{A \code{CopyNumberSet} or \code{SnpSet} object}
+
+  \item{\dots}{For the method \code{order}, if the first element of the
+  \dots list is a \code{SnpSet} or \code{CopyNumberSet} the object is
+  reordered by chromosome and physical position.}
+
+  \item{na.rm}{Logical. Ignored}
+
+  \item{na.last}{Ignored}
+
+  \item{decreasing}{Ignored}
 
 }
 
 \value{
 
-  A matrix.
+  The method \code{order} returns and object of the same class.
+
+%  The method \code{cnEmission} returns an array (features x samples x state).
+
+  The method \code{sd} return a matrix (features x samples)
 
 }
 
 \details{
 
-  The sd method for \code{CopyNumberSet} and \code{oligoSnpSet} objects
-  retrieves the copy number confidence scores from the
+  The \code{sd} method for \code{CopyNumberSet} and \code{oligoSnpSet}
+  objects retrieves the copy number confidence scores from the
   \code{cnConfidence} assay data element.  The confidence matrix is a R
   x C matrix for an object with R features and C samples.  Valid
   confidence estimates must be positive and not missing (not
@@ -60,12 +74,13 @@ sd(x, na.rm=TRUE)
 }
 
 \seealso{
-  \code{\link{mad}}
+  \code{\link{mad}}, \code{\link{cnEmission}}
 }
 
 \examples{
   data(oligoSetExample)
   sds <- sd(oligoSet)
+  oligoSet2 <- order(oligoSet)
 }
 
 \keyword{methods}

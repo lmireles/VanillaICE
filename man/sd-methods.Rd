@@ -2,7 +2,7 @@
 \docType{methods}
 \alias{sd-methods}
 %\alias{sd,CopyNumberSet-method}
-\alias{sd,oligoSnpSet-method}
+%\alias{sd,oligoSnpSet-method}
 \title{Methods for estimating copy number standard deviations.}
 
 \description{Estimate the standard deviation for \code{CopyNumberSet}

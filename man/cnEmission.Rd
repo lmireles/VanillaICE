@@ -3,9 +3,11 @@
 \title{Calculate emission probabilities for total copy number}
 \description{Calculate emission probabilities for total copy number from
 a Uniform-Gaussian mixture.}
+
 \usage{
 cnEmission(object, stdev, k = 5, cnStates = 0:4, is.log = FALSE, verbose = TRUE, ...)
 }
+
 \arguments{
   \item{object}{A \code{CopyNumberSet}, \code{oligoSnpSet}, or \code{matrix}.}
   \item{stdev}{A matrix.  Ignored unless class of object is
@@ -56,6 +58,8 @@ cnEmission(object, stdev, k = 5, cnStates = 0:4, is.log = FALSE, verbose = TRUE,
 R. Scharpf
 }
 \seealso{
+
+  \code{\link{cnEmission-methods}}
 
  See \code{\link{hmm}} method estimates emission probabilities and
  fits the Viterbi algorithm.

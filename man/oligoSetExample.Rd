@@ -21,7 +21,7 @@
 		oligoSet <- oligoSet[!is.na(chromosome(oligoSet)), ]
 		oligoSet <- oligoSet[chromosome(oligoSet) < 3, ]
 	}
-	data(oligoSet)
+	data(oligoSetExample)
 	oligoSet
 }
 \keyword{datasets}
