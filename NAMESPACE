@@ -14,7 +14,7 @@ importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
 
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
-export(sd)
+export(icePlatforms,order,sd)
 exportMethods(cnEmission, gtEmission, hmm, order, sd, xyplot)
 
 
