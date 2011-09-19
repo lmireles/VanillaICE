@@ -127,6 +127,9 @@ Rob Scharpf
     hmm.params <- HmmOptionList(cnSet)
     hmm.params
   }
+  data(oligoSetExample)
+  hmm.params <- HmmOptionList(oligoSet)
+  hmm.params
 }
 \keyword{list}
 

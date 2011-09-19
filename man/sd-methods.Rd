@@ -64,5 +64,4 @@ sd(x, na.rm=TRUE)
   data(oligoSetExample)
   sds <- sd(oligoSet)
 }
-
-\keywords{methods}
+\keyword{methods}

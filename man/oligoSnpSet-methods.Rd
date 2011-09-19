@@ -9,6 +9,8 @@
 \description{Methods for the \code{oligoSnpSet} class}
 
 \section{Methods}{
+  Standard generic methods:
+  \describe{
   \item{\code{cnEmission(object, cnStates=0:4)}}{Estimate emission
     probabilities for copy number. See \code{\link{cnEmission}}.}
 
@@ -16,6 +18,7 @@
 
   \item{\code{sd(x)}}{Estimate copy number standard deviation. See
     \code{\link{sd}}.}
+}
 
 }
 

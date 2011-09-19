@@ -1,19 +1,11 @@
 \name{oligoSet}
 \alias{oligoSet}
 \docType{data}
-\title{
-%%   ~~ data name/kind ... ~~
-}
+\title{An example instance of oligoSnpSet class}
 \description{
-%%  ~~ A concise (1-5 lines) description of the dataset. ~~
+	An example instance of the \code{oligoSnpSet} class
 }
 \usage{data(oligoSet)}
-\format{
-
-}
-\details{
-%%  ~~ If necessary, more details than the __description__ above ~~
-}
 \source{
 	Created from the simulated locusLevelData provided in this package.
 }
