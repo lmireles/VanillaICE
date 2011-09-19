@@ -22,6 +22,9 @@ HmmOptionList <- function(object,
 	if("prGenotypeHomozygous" %in% names(list(...)))
 		prGtHom <- list(...)[["prGenotypeHomozygous"]]
 ##	new("HmmOptionList",
+	if(!ICE){
+		prHetCalledHom <- prHetCalledHet <- prHomInNormal <- prHomInRoh <- rohStates <- NA
+	}
 	res <- list(snpsetClass=class(object),
 	    copynumberStates=copynumberStates,
 	    states=states,
