@@ -24,6 +24,8 @@ HmmOptionList <- function(object,
 ##	new("HmmOptionList",
 	if(!ICE){
 		prHetCalledHom <- prHetCalledHet <- prHomInNormal <- prHomInRoh <- rohStates <- NA
+	} else{
+		prGtMis <- prGtHom <- NA
 	}
 	res <- list(snpsetClass=class(object),
 	    copynumberStates=copynumberStates,
