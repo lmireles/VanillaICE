@@ -161,3 +161,4 @@ setMethod("xyplot", signature(x="formula", data="SnpSet"),
 	  function(x, data, ...){
 		  xyplot2(x, data, ...)
 })
+
