@@ -1,7 +1,9 @@
 setMethod("hmm2", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  verbose <- hmm.params[["verbose"]] > 0
-		  log.beta <- cnEmission(object, hmm.params, verbose=verbose, ...)
+		  log.beta <- cnEmission(object, hmm.params,
+					 cnStates=hmm.params[["copynumberStates"]],
+					 verbose=verbose, ...)
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
 					     hmm.params$states)
@@ -69,3 +71,26 @@ setMethod("sd", signature(x="CopyNumberSet"),
 	  function(x, na.rm=FALSE){
 		  getSds(x, na.rm=TRUE)
 	   })
+
+
+setMethod("cnEmission", signature(object="CopyNumberSet"),
+	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, ...){
+		  ##fn <- featureNames(object)
+		  is.ordered <- checkOrder(object)
+		  stopifnot(is.ordered)
+		  CN <- copyNumber(object)
+		  sds <- sd(object)
+		  emit <- cnEmission(object=CN, stdev=sds,
+				     k=k, cnStates=cnStates,
+				     is.log=is.log, ...)
+		  return(emit)
+	  })
+
+setMethod("order", "CopyNumberSet",
+	  function(..., na.last=TRUE, decreasing=FALSE){
+		  object <- list(...)[[1]]
+		  index <- order(chromosome(object), position(object))
+		  if(any(diff(index) < 0))
+			  object <- object[index, ]
+		  return(object)
+	  })

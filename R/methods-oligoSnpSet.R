@@ -1,8 +1,9 @@
 setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  verbose <- hmm.params[["verbose"]] > 0
-		  log.beta.cn <- cnEmission(object, hmm.params, verbose=verbose, ...)
-		  log.beta.gt <- gtEmission(object, hmm.params)
+		  log.beta.cn <- cnEmission(object,
+					    cnStates=hmm.params[["copynumberStates"]], ...)
+		  log.beta.gt <- gtEmission(object, hmm.params, ...)
 		  ##log.emission <- emit(object, hmm.params)
 
 		  log.beta <- log.beta.cn+log.beta.gt
@@ -79,48 +80,48 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 
 
 
-setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params){
-		  ICE <- hmm.params$ICE
-		  ##EMIT.THR <- hmm.params[["EMIT.THR"]]
-		  states <- hmm.params$states
-		  verbose <- hmm.params$verbose
-		  normalIndex <- hmm.params$normalIndex
-		  if(all(is.na(cnConfidence(object)))){
-			  message("cnConfidence missing.  Using MAD")
-			  sds <- robustSds2(copyNumber(object))
-			  cnConfidence(object) <- 1/sds
-		  }
-		  ##log.cn.emission <- calculateEmission.copynumber2(object,
-		  ##                                                 hmm.params)
-		  log.cn.emission <- calculateEmission(object, hmm.params)
-		  if(!ICE){
-			  log.gt.emission <- calculateEmission.genotype(object, hmm.params)
-		  } else {
-			  ##assumed order
-			  ## ROH, normal
-			  stop('need to update')
-			  log.gt.emission <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
-						   dimnames=list(featureNames(object),
-						   sampleNames(object),
-						   states))
-			  tmp <- genotypeEmissionCrlmm(object, hmm.params)
-			  rohStates <- which(hmm.params[["rohStates"]])
-			  notRohState <- which(!hmm.params[["rohStates"]])
-			  for(j in rohStates){
-				  log.gt.emission[, , j] <- tmp[, , "ROH"]
-			  }
-			  for(j in notRohState){
-				  log.gt.emission[, , j] <- tmp[, , "normal"]
-			  }
-		  }
-		  log.emission <- log.gt.emission+log.cn.emission
-		  if(any(is.na(log.emission))){
-			  if(verbose==2) message("Converting missing values in the emission matrix to 0")
-			  log.emission[is.na(log.emission)] <- 0
-		  }
-		  return(log.emission)
-})
+##setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
+##	  function(object, hmm.params){
+##		  ICE <- hmm.params$ICE
+##		  ##EMIT.THR <- hmm.params[["EMIT.THR"]]
+##		  states <- hmm.params$states
+##		  verbose <- hmm.params$verbose
+##		  normalIndex <- hmm.params$normalIndex
+##		  if(all(is.na(cnConfidence(object)))){
+##			  message("cnConfidence missing.  Using MAD")
+##			  sds <- robustSds2(copyNumber(object))
+##			  cnConfidence(object) <- 1/sds
+##		  }
+##		  ##log.cn.emission <- calculateEmission.copynumber2(object,
+##		  ##                                                 hmm.params)
+##		  log.cn.emission <- calculateEmission(object, hmm.params)
+##		  if(!ICE){
+##			  log.gt.emission <- calculateEmission.genotype(object, hmm.params)
+##		  } else {
+##			  ##assumed order
+##			  ## ROH, normal
+##			  stop('need to update')
+##			  log.gt.emission <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
+##						   dimnames=list(featureNames(object),
+##						   sampleNames(object),
+##						   states))
+##			  tmp <- genotypeEmissionCrlmm(object, hmm.params)
+##			  rohStates <- which(hmm.params[["rohStates"]])
+##			  notRohState <- which(!hmm.params[["rohStates"]])
+##			  for(j in rohStates){
+##				  log.gt.emission[, , j] <- tmp[, , "ROH"]
+##			  }
+##			  for(j in notRohState){
+##				  log.gt.emission[, , j] <- tmp[, , "normal"]
+##			  }
+##		  }
+##		  log.emission <- log.gt.emission+log.cn.emission
+##		  if(any(is.na(log.emission))){
+##			  if(verbose==2) message("Converting missing values in the emission matrix to 0")
+##			  log.emission[is.na(log.emission)] <- 0
+##		  }
+##		  return(log.emission)
+##})
 
 
 setMethod("sd", signature(x="oligoSnpSet"),
@@ -157,8 +158,21 @@ setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDat
 			 ...)
 	  })
 
-setMethod("xyplot", signature(x="formula", data="SnpSet"),
-	  function(x, data, ...){
-		  xyplot2(x, data, ...)
-})
 
+setMethod("cnEmission", signature(object="oligoSnpSet"),
+	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, ...){
+		  ##fn <- featureNames(object)
+		  is.ordered <- checkOrder(object)
+		  stopifnot(is.ordered)
+		  CN <- copyNumber(object)
+		  sds <- sd(object)
+		  emit <- cnEmission(object=CN, stdev=sds,
+				     k=k, cnStates=cnStates,
+				     is.log=is.log, ...)
+		  return(emit)
+	  })
+
+setMethod("sd", signature(x="oligoSnpSet"),
+	  function(x, na.rm=FALSE){
+		  getSds(x, na.rm=TRUE)
+	   })

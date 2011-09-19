@@ -68,3 +68,40 @@ setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
 		  } else rd <- res[[1]]
 		  return(rd)
 	  })
+
+setMethod("gtEmission", signature(object="SnpSet"),
+	  function(object, hmmOptions, ...){
+		  is.ordered <- checkOrder(object)
+		  stopifnot(is.ordered)
+		  log.emit <- gtEmission(calls(object), hmmOptions,
+					 is.snp=isSnp(object),
+					 gt.conf=confs(object),
+					 cdfName=annotation(object), ...)
+		  return(log.emit)
+	  })
+
+setMethod("order", "SnpSet",
+	  function(..., na.last=TRUE, decreasing=FALSE){
+		  object <- list(...)[[1]]
+		  index <- order(chromosome(object), position(object))
+		  if(any(diff(index) < 0))
+			  object <- object[index, ]
+		  return(object)
+	  })
+
+setMethod("checkOrder", signature(object="SnpSet"),
+	  function(object){
+		  d <- diff(order(chromosome(object), position(object)))
+		  if(any(d < 0)){
+			  warning("Object should be ordered by chromosome and physical position.\n",
+				  "Try \n",
+				  "> object <- order(object) \n")
+			  return(FALSE)
+		  }
+		  TRUE
+	  })
+
+setMethod("xyplot", signature(x="formula", data="SnpSet"),
+	  function(x, data, ...){
+		  xyplot2(x, data, ...)
+})

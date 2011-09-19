@@ -821,101 +821,16 @@ validChromosomeIndex <- function(object){
 
 
 
-cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
-	cnStates <- hmmOptions$copynumberStates##[["copynumberStates"]]
-	verbose <- hmmOptions$verbose
-	states <- hmmOptions$states
-	is.log <- hmmOptions$is.log
-	fn <- featureNames(object)
-	S <- length(states)
-	CN <- copyNumber(object)
-	if(any(colSums(is.na(CN)) == nrow(CN))){
-		stop("Some samples have all missing values. Exclude these samples before continuing.")
-	}
-	sds <- sd(object)
-	emission.cn <- array(NA, dim=c(nrow(object), ncol(object), S))
-	if(is.log){
-		MIN.CN <- -10
-		MAX.CN <- 2.5
-	} else {
-		MIN.CN <- 0
-		MAX.CN <- 10
-	}
-	if(any(CN < MIN.CN, na.rm=TRUE)) CN[CN < MIN.CN] <- MIN.CN
-	if(any(CN > MAX.CN, na.rm=TRUE)) CN[CN > MAX.CN] <- MAX.CN
-	for(j in 1:ncol(object)){
-		cn <- CN[, j, drop=FALSE]
-		sd <- sds[, j, drop=FALSE]
-		I <- which(!is.na(as.numeric(cn)))
-		old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-		cnvector <- as.numeric(cn)[I]
-		prOutlier <- probabilityOutlier(cnvector, k=k)
-		for(l in seq_along(cnStates)){
-			mu <- cnStates[l]
-			tmp <- (1-prOutlier) * dnorm(x=cnvector,
-						     mean=cnStates[l],
-						     sd=as.numeric(sd)[I]) +
-							     prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
-			emission.cn[I, j, l] <- tmp
-		}
-	}
-	return(log(emission.cn))
-}
-
-gtEmission <- function(object, hmmOptions){
-	ICE <- hmmOptions$ICE
-	states <- hmmOptions$states
-	if(!ICE){
-		p <- hmmOptions$prGtHom
-		prGenotypeMissing <- hmmOptions$prGtMis
-		verbose <- hmmOptions$verbose
-		stopifnot(length(p) == length(states))
-		if(!is.numeric(calls(object))) stop("genotypes must be integers (1=AA, 2=AB, 3=BB) or NA (missing)")
-		GT <- calls(object)
-		emission <- array(GT, dim=c(nrow(GT), ncol(GT), length(states)), dimnames=list(featureNames(object), sampleNames(object), states))
-		missingGT <- any(is.na(GT))
-		for(s in seq(along=states)){
-			tmp <- GT
-			tmp[tmp == 1 | tmp == 3] <- p[s]
-			tmp[tmp == 2] <- 1-p[s]
-			index1 <- is.na(tmp) & !isSnp(object)
-			index2 <- is.na(tmp) & isSnp(object)
-			if(missingGT){
-				tmp[index2] <- prGenotypeMissing[s]
-				## use uniform for nonpolymorphic
-				tmp[index1] <- 1/length(states)
-			}
-			emission[, , s] <- tmp
-		}
-		logemit <- log(emission)
-		##return(logemit)
-	} else {
-		##stop('need to update ICE option')
-		logemit <- array(NA, dim=c(nrow(object), ncol(object), length(states)),
-					 dimnames=list(featureNames(object),
-					 sampleNames(object),
-					 states))
-		tmp <- genotypeEmissionCrlmm(object, hmmOptions)
-		rohStates <- which(hmmOptions[["rohStates"]])
-		notRohState <- which(!hmmOptions[["rohStates"]])
-		if(length(rohStates) > 0){
-			logemit[, , rohStates] <- tmp[, , "ROH"]
-		}
-		if(length(notRohState) > 0){
-			logemit[, , notRohState] <- tmp[, , "normal"]
-		}
-	}
-	return(logemit)
-}
 
 
-probabilityOutlier <- function(cn, k=3, verbose){
+
+
+probabilityOutlier <- function(cn, sigma=c(0.5, 0.2), k=3, verbose=TRUE){
 	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
 	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
 	rmeds <- runmed(cn, k)
 	delta <- cn-rmeds
 	mu <- 0
-	sigma=c(0.5, 0.2)
 	tau <- 0.01
 	epsilon <- 2; counter <- 1
 	while(epsilon > 0.01){
@@ -951,22 +866,23 @@ icePlatforms <- function(){
 }
 
 
-genotypeEmissionCrlmm <- function(object, hmmOptions){
-	if(annotation(object) == "pd.genomewidesnp.6"){
+genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
+	GT <- as.integer(object)
+	rm(object); gc()
+	if(cdfName == "pd.genomewidesnp.6"){
 		annotation <- "genomewidesnp6"
-	} else annotation <- annotation(object)
+	}
 	loader(paste(annotation, "Conf.rda", sep=""), .vanillaIcePkgEnv, "VanillaICE")
 	hapmapP <- getVarInEnv("reference")
 	pHetCalledHom <- hmmOptions[["prHetCalledHom"]]
 	pHetCalledHet <- hmmOptions[["prHetCalledHet"]]
 	pHomInNormal <- hmmOptions[["prHomInNormal"]]
 	pHomInRoh <- hmmOptions[["prHomInRoh"]]
-	if(length(annotation(object)) < 1) stop("must specify annotation")
-	GT <- as.integer(calls(object))
-	GTconf <- confs(object)
+	if(length(cdfName) < 1) stop("must specify annotation")
+
 	##data(list=paste(annotation, "Conf", sep=""), package="VanillaICE", envir=environment())
-	if(length(pHomInNormal) == nrow(GTconf)){  ##convert to vector
-		pHomInNormal <- as.numeric(matrix(pHomInNormal, nrow(GTconf), ncol(GTconf), byrow=FALSE))
+	if(length(pHomInNormal) == nrow(gt.conf)){  ##convert to vector
+		pHomInNormal <- as.numeric(matrix(pHomInNormal, nrow(gt.conf), ncol(gt.conf), byrow=FALSE))
 	} else pHomInNormal <-  rep(pHomInNormal, length(GT))
 	hapmapP[, 2] <- 1-exp(-hapmapP[, 2]/1000)
 	##p = 1-exp(-X/1000)
@@ -988,7 +904,8 @@ genotypeEmissionCrlmm <- function(object, hmmOptions){
 	##-------------------------------------------------------------------------
 	##GT <- as.integer(genotypes)
 	##confidence <- as.numeric(confidence)
-	confidence <- as.numeric(GTconf)
+	confidence <- as.numeric(gt.conf)
+	rm(gt.conf); gc()
 	pTruthIsNormal <- pTruthIsRoh <- rep(NA, length(GT))
 	confidence[confidence==0] <- 0.01 ##Otherwise, NA's result
 	hom <- which(GT == 1 | GT == 3)
