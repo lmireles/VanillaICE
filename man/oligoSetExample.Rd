@@ -5,10 +5,11 @@
 \description{
 	An example instance of the \code{oligoSnpSet} class
 }
-\usage{data(oligoSet)}
+\usage{data(oligoSetExample)}
 \source{
 	Created from the simulated locusLevelData provided in this package.
 }
+\seealso{\code{\link{locusLevelData}}}
 \examples{
 	\dontrun{
 		## 'oligoSetExample' created by the following
