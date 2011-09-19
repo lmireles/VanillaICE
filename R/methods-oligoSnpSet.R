@@ -2,10 +2,10 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
 		  verbose <- hmm.params[["verbose"]] > 0
 		  log.beta.cn <- cnEmission(object,
-					    cnStates=hmm.params[["copynumberStates"]], ...)
+					    cnStates=hmm.params[["copynumberStates"]],
+					    is.log=hmm.params[["is.log"]], ...)
 		  log.beta.gt <- gtEmission(object, hmm.params, ...)
 		  ##log.emission <- emit(object, hmm.params)
-
 		  log.beta <- log.beta.cn+log.beta.gt
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
@@ -33,12 +33,10 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  } else k <- 3
 			  message("Using a running median of ", k, " markers to estimate the outlier probability.")
 		  }
+		  is.ordered <- checkOrder(object)
+		  if(!is.ordered) object <- order(object)
 		  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
 		  chromosomes <- unique(chromosome(object))
-		  ix <- order(chromosome(object), position(object))
-		  if(any(diff(ix) < 0)) {
-			  object <- object[ix, ]
-		  }
 		  if(is.null(hmm.params$sample.index)){
 			  sample.index <- seq(length=ncol(object))
 		  } else sample.index <- hmm.params$sample.index

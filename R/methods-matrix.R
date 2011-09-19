@@ -62,6 +62,12 @@ setMethod("gtEmission", signature(object="matrix"),
 			  logemit <- log(emission)
 			  ##return(logemit)
 		  } else {
+			  not.valid <- invalidGtConfidence(gt.conf)
+			  if(any(not.valid)){
+				  stop("Invalid genotype confidence scores.\n",
+				       "\tAll confidence scores must be between 0 and 1")
+
+			  }
 			  ##stop('need to update ICE option')
 			  logemit <- array(NA, dim=c(nrow(object), ncol(object), length(states)))
 			  tmp <- genotypeEmissionCrlmm(object, hmmOptions=hmmOptions, gt.conf=gt.conf, cdfName=cdfName)
