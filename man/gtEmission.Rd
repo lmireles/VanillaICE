@@ -5,7 +5,7 @@
   Calculate emission probabilities for genotypes diallelic genotypes.
 }
 \usage{
-gtEmission(object, hmmOptions, ...)
+gtEmission(object, hmmOptions, gt.conf, is.snp, cdfName, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -15,6 +15,13 @@ gtEmission(object, hmmOptions, ...)
   \item{hmmOptions}{
 %%     ~~Describe \code{hmmOptions} here~~
 }
+
+\item{gt.conf}{}
+
+\item{is.snp}{}
+
+\item{cdfName}{}
+
   \item{\dots}{
 %%     ~~Describe \code{\dots} here~~
 }

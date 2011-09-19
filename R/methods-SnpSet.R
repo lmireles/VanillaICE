@@ -83,22 +83,13 @@ setMethod("gtEmission", signature(object="SnpSet"),
 setMethod("order", "SnpSet",
 	  function(..., na.last=TRUE, decreasing=FALSE){
 		  object <- list(...)[[1]]
-		  index <- order(chromosome(object), position(object))
-		  if(any(diff(index) < 0))
-			  object <- object[index, ]
-		  return(object)
+		  chromosomePositionOrder(object)
 	  })
 
+
 setMethod("checkOrder", signature(object="SnpSet"),
-	  function(object){
-		  d <- diff(order(chromosome(object), position(object)))
-		  if(any(d < 0)){
-			  warning("Object should be ordered by chromosome and physical position.\n",
-				  "Try \n",
-				  "> object <- order(object) \n")
-			  return(FALSE)
-		  }
-		  TRUE
+	  function(object, verbose=FALSE){
+		  .checkOrder(object, verbose)
 	  })
 
 setMethod("xyplot", signature(x="formula", data="SnpSet"),

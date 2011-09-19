@@ -3,6 +3,7 @@ setMethod("hmm2", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 		  verbose <- hmm.params[["verbose"]] > 0
 		  log.beta <- cnEmission(object, hmm.params,
 					 cnStates=hmm.params[["copynumberStates"]],
+					 is.log=hmm.params[["is.log"]],
 					 verbose=verbose, ...)
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
@@ -86,11 +87,15 @@ setMethod("cnEmission", signature(object="CopyNumberSet"),
 		  return(emit)
 	  })
 
+setMethod("checkOrder", signature(object="CopyNumberSet"),
+	  function(object, verbose=FALSE){
+		  .checkOrder(object, verbose)
+	  })
+
+
+
 setMethod("order", "CopyNumberSet",
 	  function(..., na.last=TRUE, decreasing=FALSE){
 		  object <- list(...)[[1]]
-		  index <- order(chromosome(object), position(object))
-		  if(any(diff(index) < 0))
-			  object <- object[index, ]
-		  return(object)
+		  chromosomePositionOrder(object)
 	  })

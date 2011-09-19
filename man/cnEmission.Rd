@@ -4,7 +4,7 @@
 \description{Calculate emission probabilities for total copy number from
 a Uniform-Gaussian mixture.}
 \usage{
-cnEmission(object, stdev, k = 3, cnStates = 0:4, is.log = FALSE, verbose = TRUE, ...)
+cnEmission(object, stdev, k = 5, cnStates = 0:4, is.log = FALSE, verbose = TRUE, ...)
 }
 \arguments{
   \item{object}{A \code{CopyNumberSet}, \code{oligoSnpSet}, or \code{matrix}.}
@@ -66,7 +66,8 @@ R. Scharpf
 
 }
 \examples{
-data(oligoSet)
+data(oligoSetExample)
+oligoSet <- order(oligoSet)
 cn.emit <- cnEmission(oligoSet, k=5,
 		      cnStates=log2(c(0.1, 1, 2, 3, 4)),
 		      is.log=TRUE)

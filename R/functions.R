@@ -775,6 +775,33 @@ invalidCnConfidence <- function(x){
 	is.na(x) | x <= 0 | is.nan(x) | is.infinite(x)
 }
 
+invalidGtConfidence <- function(x){
+	is.na(x) | x < 0 | x > 1 | is.nan(x) | is.infinite(x)
+}
+
+.checkOrder <- function(object, verbose=FALSE){
+	d <- diff(order(chromosome(object), position(object)))
+	if(any(d < 0)){
+		if(verbose)
+			warning("Object should be ordered by chromosome and physical position.\n",
+				"Try \n",
+				"> object <- order(object) \n")
+		return(FALSE)
+	}
+	TRUE
+
+}
+
+chromosomePositionOrder <- function(object){
+	is.ordered <- checkOrder(object)
+	if(!is.ordered){
+		message("Ordering ", class(object), " object by chromosome and physical position")
+		index <- order(chromosome(object), position(object))
+		object <- object[index, ]
+	}
+	return(object)
+}
+
 getSds <- function(object, na.rm=TRUE){
 	cn.conf <- cnConfidence(object)
 	stopifnot(all(chromosome(object) <= 24))
@@ -867,11 +894,12 @@ icePlatforms <- function(){
 
 
 genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
+	stopifnot(is(object, "matrix"))
 	GT <- as.integer(object)
-	rm(object); gc()
+	##rm(object); gc()
 	if(cdfName == "pd.genomewidesnp.6"){
 		annotation <- "genomewidesnp6"
-	}
+	} else annotation <- cdfName
 	loader(paste(annotation, "Conf.rda", sep=""), .vanillaIcePkgEnv, "VanillaICE")
 	hapmapP <- getVarInEnv("reference")
 	pHetCalledHom <- hmmOptions[["prHetCalledHom"]]
@@ -879,7 +907,6 @@ genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
 	pHomInNormal <- hmmOptions[["prHomInNormal"]]
 	pHomInRoh <- hmmOptions[["prHomInRoh"]]
 	if(length(cdfName) < 1) stop("must specify annotation")
-
 	##data(list=paste(annotation, "Conf", sep=""), package="VanillaICE", envir=environment())
 	if(length(pHomInNormal) == nrow(gt.conf)){  ##convert to vector
 		pHomInNormal <- as.numeric(matrix(pHomInNormal, nrow(gt.conf), ncol(gt.conf), byrow=FALSE))
@@ -904,7 +931,8 @@ genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
 	##-------------------------------------------------------------------------
 	##GT <- as.integer(genotypes)
 	##confidence <- as.numeric(confidence)
-	confidence <- as.numeric(gt.conf)
+	##confidence <- as.numeric(gt.conf)
+	confidence <- gt.conf
 	rm(gt.conf); gc()
 	pTruthIsNormal <- pTruthIsRoh <- rep(NA, length(GT))
 	confidence[confidence==0] <- 0.01 ##Otherwise, NA's result
@@ -934,11 +962,12 @@ genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
 	fNormal[het] <- (1-pHomInNormal[het]) * pTruthIsNormal[het]
 	fLoh[hom] <- pHomInRoh * pTruthIsRoh[hom]
 	fLoh[het] <- (1-pHomInRoh) * pTruthIsRoh[het]
-	f <- array(NA, dim=c(nrow(object), ncol(object), 2), dimnames=list(featureNames(object),
-							     sampleNames(object),
-							     c("normal", "ROH")))
-	f[, , "normal"] <- matrix(fNormal, nrow(object), ncol(object))
-	f[, , "ROH"] <- matrix(fLoh, nrow(object), ncol(object))
+	f <- array(NA, dim=c(nrow(object), ncol(object), 2)) ##dimnames=list(featureNames(object),
+							##     sampleNames(object),
+							  ##   c("normal", "ROH")))
+	f[, , 1] <- matrix(fNormal, length(object), ncol(object))
+	f[, , 2] <- matrix(fLoh, length(object), ncol(object))
+	dimnames(f)[[3]] <- c("normal", "ROH")
 	f[f  == 0] <- min(f[f > 0], na.rm=TRUE)
 	f <- log(f)
 	return(f)

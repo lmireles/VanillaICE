@@ -1,7 +1,7 @@
 \name{sd-methods}
 \docType{methods}
 \alias{sd-methods}
-\alias{sd,CopyNumberSet-method}
+%\alias{sd,CopyNumberSet-method}
 \alias{sd,oligoSnpSet-method}
 \title{Methods for estimating copy number standard deviations.}
 
@@ -10,13 +10,13 @@
 
 \usage{
 
-sd(x, na.rm=TRUE)
+sd(x, na.rm=FALSE)
 
 }
 
 \arguments{
 
-  \item{object}{A \code{CopyNumberSet} or \code{oligoSnpSet}}
+  \item{x}{A \code{CopyNumberSet} or \code{oligoSnpSet}}
 
   \item{na.rm}{Logical. }
 
