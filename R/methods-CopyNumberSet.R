@@ -65,3 +65,7 @@ setMethod("hmm", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 		  } else rd <- res[[1]]
 		  return(rd)
 	  })
+setMethod("sd", signature(x="CopyNumberSet"),
+	  function(x, na.rm=FALSE){
+		  getSds(x, na.rm=TRUE)
+	   })

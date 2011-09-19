@@ -7,13 +7,13 @@ importMethodsFrom(oligoClasses, open, close, coverage2, state)
 importFrom(oligoClasses, RangedDataHMM)
 importFrom(methods, "@<-", callNextMethod, new, validObject)
 ##importFrom(graphics, plot)
-importFrom(stats, update)
+importFrom(stats, update, sd)
 importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
 	   lpoints, panel.number)
 
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
 ##export(plot)
-exportMethods("hmm","xyplot")
+exportMethods(hmm,sd,xyplot, sd)
 
 

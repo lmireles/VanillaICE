@@ -123,29 +123,10 @@ setMethod("emit", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 })
 
 
-
-##todataframe <- function(object, mm){
-##	browser()
-##	stopifnot(nrow(mm.df) == nrow(object))
-##	cn <- as.numeric(copyNumber(object))
-##	gt <- as.integer(calls(object))
-##	range.index <- mm.df$query
-##	range.index <- matrix(range.index, nrow(object)
-##
-##	x <- rep(position(object)/1e6, ncol(from))
-##
-##	      cn <- as.numeric(cn)
-##	      gt <- as.integer(gt)
-##	      ##x <- rep(position(object)[marker.index], 4)/1e6
-##	      is.snp <- rep(isSnp(from), ncol(from))
-##	      id <- rep(sampleNames(from), each=nrow(from))
-##	      df <- data.frame(x=x, cn=cn, gt=gt, id=id,
-##			       is.snp=is.snp,
-##			       stringsAsFactors=FALSE)
-##
-##}
-
-
+setMethod("sd", signature(x="oligoSnpSet"),
+	  function(x, na.rm=FALSE){
+		  getSds(x, na.rm=TRUE)
+	   })
 
 setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDataCNV"),
 	  function(x, data, range, frame=0L, ...){

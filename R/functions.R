@@ -772,16 +772,16 @@ findFatherMother <- function(offspringId, object){
 ##}
 
 invalidCnConfidence <- function(x){
-	is.na(x) | x == 0 | is.nan(x) | is.infinite(x)
+	is.na(x) | x <= 0 | is.nan(x) | is.infinite(x)
 }
 
-getSds <- function(object, verbose=FALSE){
+getSds <- function(object, na.rm=TRUE){
 	cn.conf <- cnConfidence(object)
 	stopifnot(all(chromosome(object) <= 24))
 	notvalid <- invalidCnConfidence(cn.conf)
 	CN <- copyNumber(object)
 	if(any(notvalid)){
-		if(verbose) message("cnConfidence missing.  Using MAD")
+		##if(verbose) message("cnConfidence missing.  Using MAD")
 		marker.index <- which(chromosome(object) < 23)
 		if(length(marker.index) == 0){
 			sds <- matrix(NA, nrow(cn.conf), ncol(cn.conf))
@@ -832,7 +832,7 @@ cnEmission <- function(object, hmmOptions, k=3, verbose=TRUE){
 	if(any(colSums(is.na(CN)) == nrow(CN))){
 		stop("Some samples have all missing values. Exclude these samples before continuing.")
 	}
-	sds <- getSds(object)
+	sds <- sd(object)
 	emission.cn <- array(NA, dim=c(nrow(object), ncol(object), S))
 	if(is.log){
 		MIN.CN <- -10
