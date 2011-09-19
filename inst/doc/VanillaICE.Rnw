@@ -105,18 +105,18 @@ Robert~B Scharpf, Giovanni Parmigiani, Jonathan Pevsner, and Ingo Ruczinski.
 \section{Organizing the locus-level data}
 \label{sec:simpleUsage}
 
-This package includes simulated genotype and copy number data for
-approximately 9165 SNPs on chromosome 1 and 100 SNPs on chromosome 2.
+This package includes simulated genotype and copy number data for 9165
+SNPs.
 
 <<data>>=
 library(VanillaICE)
 data(locusLevelData)
 @
 
-\noindent (The copy number estimates in the locusLevelData object were
-multiplied by 100 and saved as an integer.) Verify that it is reasonable
-to assume integer copy number for the HMM by plotting the locus-level
-estimates as a function of the physical position.
+\noindent The copy number estimates in the locusLevelData object were
+multiplied by 100 and saved as an integer. Verify that it is
+reasonable to assume integer copy number for the HMM by plotting the
+locus-level estimates as a function of the physical position.
 
 <<integerCopynumber, fig=TRUE,include=TRUE, width=8>>=
 par(las=1)
@@ -147,16 +147,15 @@ standard deviation across autosomes.  If uncertainty estimates are not
 available for copy number, the HMM will calculate the median absolute
 deviation (MAD).  See the the function \Robject{robustSds}.
 
-<<eval=FALSE>>=
-cn <- copyNumber(oligoSet)
-is.autosome <- chromosome(oligoSet) < 23
-sds <- apply(cn[is.autosome, ], 2, mad, na.rm=TRUE)
-sds <- matrix(sds, nrow(oligoSet), ncol(oligoSet), byrow=TRUE)
-cnConfidence(oligoSet) <- sds
+<<sdMethod>>=
+sds <- sd(oligoSet)
 @
 \noindent The inverse of the \Robject{sds} object can be assigned to the
 \Robject{cnConfidence} slot.
 
+<<assignSds>>=
+cnConfidence(oligoSet) <- 1/sds
+@
 
 \section{Fitting the HMM}
 
@@ -258,13 +257,16 @@ a given locus, we provide an unevaluated code chunk below (our example
 contains only a single sample):
 <<multipanelSingeLocus,eval=FALSE>>=
 xyplot(cn ~ x | id, oligoSet, range=RangedDataObject, ylim=c(-0.5,4), panel=xypanel)
-@ Note that the default in the above command would be to use a common
-x- and y-scales for each panel.  To allow the x-axes to change for
-each panel, one could set the x-scales to 'free':
+@
+
+\noindent Note that the default in the above command is to use a
+common x- and y-scale for each panel.  To allow the x-axes to change
+for each panel, one could set the x-scales to 'free':
 <<multipanelSingeLocus,eval=FALSE>>=
 xyplot(cn ~ x | id, oligoSet, range=RangedDataObject, ylim=c(-0.5,4), scales=list(x="free"),
        panel=xypanel)
-@ The function \Rfunction{xypanel} provides default colors for
+@
+\noindent The function \Rfunction{xypanel} provides default colors for
 annotating the plotting symbols by genotype and by whether the markers
 are polymorphic. The \Robject{RangedDataHMM} must be passed by the
 name \emph{range} to the \Rfunction{xyplot} method.
@@ -272,21 +274,23 @@ name \emph{range} to the \Rfunction{xyplot} method.
 \paragraph{By sample.}
 To plot the low-level data for multiple alterations occurring in a
 single sample, one can again pass a \Rclass{RangedDataHMM} object with
-name \emph{range} to the \Rfunction{xyplot}. See Figure
-\ref{fig:xy}. Note that the formula in the example below conditions on
-\emph{range} instead of \emph{id}.  The conditioning variable for
-displaying multiple panels of a single sample must be called
-'range'. We plot a 2 Mb window surrounding each of the alterations in
-the simulated data by specifying \texttt{frame=2e6}.
-<<xyplotExample,fig=TRUE,include=FALSE, width=9, height=6>>=
+name \emph{range} to the \Rfunction{xyplot}. For example, see Figure
+\ref{fig:xy}. The code for producing Figure \ref{fig:xy} is in the
+following code chunk.  Note that the formula in the example below
+conditions on \emph{range} instead of \emph{id}.  The conditioning
+variable for displaying multiple panels of a single sample must be
+called 'range'. We plot a 2 Mb window surrounding each of the
+alterations in the simulated data by specifying \texttt{frame=2e6}.
+<<xyplotExample,fig=TRUE,include=FALSE, width=9, height=6,results=hide>>=
 ranges.altered <- fit.van[state(fit.van) != 4, ]
 xy.example <- xyplot(cn ~ x | range, oligoSet, range=ranges.altered, frame=2e6,
 			scales=list(x="free"), ylim=c(-0.5,4),
-			panel=xypanel, pch=21, border="grey")
+			panel=xypanel, cex=0.4, pch=21, border="grey",
+		     ylab=expression(log[2]("copy number")))
 @
-See \texttt{?xyplot} for additional details.
+\noindent See \texttt{?xyplot} for additional details.
 
-<<xyplotPrint,echo=FALSE>>=
+<<xyplotPrint,echo=FALSE,results=hide>>=
 pdf("VanillaICE-xyplot.pdf", width=8, height=7)
 print(xy.example)
 dev.off()
@@ -294,11 +298,13 @@ dev.off()
 \begin{figure}[t]
   \includegraphics[width=\textwidth]{VanillaICE-xyplot}
   \caption{\label{fig:xy} The method \Rfunction{xyplot} is used to
-    create a multi-panel display of alterations in a
-    single sample. Each panel displays a single copy number alteration
+    create a multi-panel display of alterations in a single
+    sample. Each panel displays a single copy number alteration
     detected by the HMM that is boxed by a rectangle. The alteration
     is framed by specifying the number of basepairs to plot upstream
-    and downstream of the alteration.  Here, we used a frame of 2 Mb.}
+    and downstream of the alteration.  Here, we used a frame of 2 Mb.
+    Homozygous SNPs with diallelic geotypes `AA' and `BB' are shaded
+    blue; SNPs with diallelic genotype call `AB' are shaded in red.}
 \end{figure}
 Note also that \texttt{scales} must be set to \emph{free} in the above
 call to \Rfunction{xyplot}.
