@@ -1,74 +1,74 @@
-computeBpiEmission.SnpSuperSet <- function(object, hmmOptions, isBPI){
-	states <- hmmOptions[["states"]]
-	prGtError <- hmmOptions[["prGtError"]]
-	ICE <- hmmOptions[["ICE"]]
-	emission <- matrix(NA, nrow(object), ncol=2)
-	colnames(emission) <- states
-	if(ICE){
-		pCrlmm <- confs(object)  ## crlmm confidence score
-		## take the minimum confidence score in the trio
-		pCrlmm <- apply(pCrlmm, 1, min, na.rm=TRUE)
-		## set emission probability to min(crlmmConfidence, 0.999)
-		I <- as.integer(pCrlmm < (1 - prGtError[["BPI"]]))
-		pCrlmm <- pCrlmm*I + (1 - prGtError[["BPI"]])*(1-I)
-		emission[,  "BPI"] <- pCrlmm
-		##Pr(mendelian inconsistency | BPI) = 0.001
-		emission[, "BPI"] <- 1 - pCrlmm
-	} else { ##ignore confidence scores
-		##Pr(call is consistent with biparental inheritance | BPI) = 0.999
-		emission[isBPI==TRUE,  "BPI"] <-  1-prGtError["BPI"]
-		##Pr(mendelian inconsistency | BPI) = 0.001
-		emission[isBPI==FALSE, "BPI"] <- prGtError["BPI"] ##Mendelian inconsistancy
-	}
-	##Pr(call is consistent with biparental inheritance | not BPI) = 0.01
-	emission[isBPI==TRUE,  "notBPI"] <- prGtError["notBPI"]   ## biparental inheritance, but true state is not Biparental
-	##Pr(mendelian inconsistency | not BPI) = 0.99
-	emission[isBPI==FALSE, "notBPI"] <- 1-prGtError["notBPI"] ## Mendelian inconsistancy
-	log.emission <- log(emission)
-	return(log.emission)
-}
-
-isBiparental.SnpSuperSet <- function(object, allowHetParent=FALSE){
-	##if(length(object$familyMember) < 3) stop("object$familyMember not the right length")
-	father <- 1
-	mother <- 2
-	offspring <- 3
-	F <- calls(object[, father])
-	M <- calls(object[, mother])
-	O <- calls(object[, offspring])
-	object <- cbind(F, M, O)
-	colnames(object) <- c("father", "mother", "offspring")
-	biparental <- isBiparental.matrix(object, allowHetParent=allowHetParent)
-	return(biparental)
-}
-
-isBiparental.matrix <- function(object, allowHetParent=TRUE){
-	F <- object[, 1]
-	M <- object[, 2]
-	O <- object[, 3]
-	##M/F AA, F/M BB, O AB
-	##isHet <- offspringHeterozygous(object)  ##offspring is heterozygous
-	biparental <- rep(NA, nrow(object))
-	biparental[F==1 & M == 3 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	biparental[F==3 & M == 1 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	##M/F AA, F/M BB, O AA or BB
-	biparental[F==1 & M == 3 & (O == 1 | O == 3)] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
-	biparental[F==3 & M == 1 & (O == 1 | O == 3)] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
-	## M/F AA, F/M BB, O AB
-	if(allowHetParent) biparental[F == 1 & M == 2 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	if(allowHetParent) biparental[F == 2 & M == 1 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	## F AB, M AA, O BB is not biparental
-	## F AA, M AB, O BB is not biparental
-	biparental[F == 2 & M == 1 & O == 3] <- FALSE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	biparental[F == 1 & M == 2 & O == 3] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
-	## M AA, F AB, O AB
-	if(allowHetParent) biparental[F == 2 & M == 3 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	if(allowHetParent) biparental[F == 3 & M == 2 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
-	## F=AB, M=BB, O=AA is NOT biparental
-	biparental[F == 2 & M == 3 & O == 1] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
-	biparental[F == 3 & M == 2 & O == 1] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
-	return(biparental)
-}
+##computeBpiEmission.SnpSuperSet <- function(object, hmmOptions, isBPI){
+##	states <- hmmOptions[["states"]]
+##	prGtError <- hmmOptions[["prGtError"]]
+##	ICE <- hmmOptions[["ICE"]]
+##	emission <- matrix(NA, nrow(object), ncol=2)
+##	colnames(emission) <- states
+##	if(ICE){
+##		pCrlmm <- confs(object)  ## crlmm confidence score
+##		## take the minimum confidence score in the trio
+##		pCrlmm <- apply(pCrlmm, 1, min, na.rm=TRUE)
+##		## set emission probability to min(crlmmConfidence, 0.999)
+##		I <- as.integer(pCrlmm < (1 - prGtError[["BPI"]]))
+##		pCrlmm <- pCrlmm*I + (1 - prGtError[["BPI"]])*(1-I)
+##		emission[,  "BPI"] <- pCrlmm
+##		##Pr(mendelian inconsistency | BPI) = 0.001
+##		emission[, "BPI"] <- 1 - pCrlmm
+##	} else { ##ignore confidence scores
+##		##Pr(call is consistent with biparental inheritance | BPI) = 0.999
+##		emission[isBPI==TRUE,  "BPI"] <-  1-prGtError["BPI"]
+##		##Pr(mendelian inconsistency | BPI) = 0.001
+##		emission[isBPI==FALSE, "BPI"] <- prGtError["BPI"] ##Mendelian inconsistancy
+##	}
+##	##Pr(call is consistent with biparental inheritance | not BPI) = 0.01
+##	emission[isBPI==TRUE,  "notBPI"] <- prGtError["notBPI"]   ## biparental inheritance, but true state is not Biparental
+##	##Pr(mendelian inconsistency | not BPI) = 0.99
+##	emission[isBPI==FALSE, "notBPI"] <- 1-prGtError["notBPI"] ## Mendelian inconsistancy
+##	log.emission <- log(emission)
+##	return(log.emission)
+##}
+##
+##isBiparental.SnpSuperSet <- function(object, allowHetParent=FALSE){
+##	##if(length(object$familyMember) < 3) stop("object$familyMember not the right length")
+##	father <- 1
+##	mother <- 2
+##	offspring <- 3
+##	F <- calls(object[, father])
+##	M <- calls(object[, mother])
+##	O <- calls(object[, offspring])
+##	object <- cbind(F, M, O)
+##	colnames(object) <- c("father", "mother", "offspring")
+##	biparental <- isBiparental.matrix(object, allowHetParent=allowHetParent)
+##	return(biparental)
+##}
+##
+##isBiparental.matrix <- function(object, allowHetParent=TRUE){
+##	F <- object[, 1]
+##	M <- object[, 2]
+##	O <- object[, 3]
+##	##M/F AA, F/M BB, O AB
+##	##isHet <- offspringHeterozygous(object)  ##offspring is heterozygous
+##	biparental <- rep(NA, nrow(object))
+##	biparental[F==1 & M == 3 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	biparental[F==3 & M == 1 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	##M/F AA, F/M BB, O AA or BB
+##	biparental[F==1 & M == 3 & (O == 1 | O == 3)] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
+##	biparental[F==3 & M == 1 & (O == 1 | O == 3)] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
+##	## M/F AA, F/M BB, O AB
+##	if(allowHetParent) biparental[F == 1 & M == 2 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	if(allowHetParent) biparental[F == 2 & M == 1 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	## F AB, M AA, O BB is not biparental
+##	## F AA, M AB, O BB is not biparental
+##	biparental[F == 2 & M == 1 & O == 3] <- FALSE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	biparental[F == 1 & M == 2 & O == 3] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
+##	## M AA, F AB, O AB
+##	if(allowHetParent) biparental[F == 2 & M == 3 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	if(allowHetParent) biparental[F == 3 & M == 2 & O == 2] <- TRUE#Pr(O | biparental)=1-0.001, Pr(O | not biparental) = 0.01
+##	## F=AB, M=BB, O=AA is NOT biparental
+##	biparental[F == 2 & M == 3 & O == 1] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
+##	biparental[F == 3 & M == 2 & O == 1] <- FALSE#Pr(O | biparental)=0.001, Pr(O | not biparental) = 1-0.01
+##	return(biparental)
+##}
 
 
 getEmission.nps <- function(object, hmmOptions){
