@@ -4,16 +4,17 @@ importMethodsFrom(methods, initialize, show)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
 importMethodsFrom(Biobase, sampleNames)
 importMethodsFrom(oligoClasses, open, close, coverage2, state)
+importMethodsFrom(IRanges, order)
 importFrom(oligoClasses, RangedDataHMM)
 importFrom(methods, "@<-", callNextMethod, new, validObject)
-##importFrom(graphics, plot)
 importFrom(stats, update, sd)
+##importMethodsFrom(IRanges, sd)
 importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
 	   lpoints, panel.number)
 
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
-##export(plot)
-exportMethods(hmm,sd,xyplot, sd)
+export(sd)
+exportMethods(cnEmission, gtEmission, hmm, order, sd, xyplot)
 
 

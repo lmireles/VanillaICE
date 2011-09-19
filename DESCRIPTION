@@ -1,10 +1,10 @@
 Package: VanillaICE
-Version: 1.15.35
+Version: 1.15.36
 Title: A Hidden Markov Model for high throughput genotyping arrays
 Author: Robert Scharpf <rscharpf@jhsph.edu>, Kevin Scharpf, and  Ingo Ruczinski <ingo@jhsph.edu>
 Maintainer: Robert Scharpf <rscharpf@jhsph.edu>
-Depends: R (>= 2.13.0), IRanges, oligoClasses (>= 1.15.26), methods
-Imports: SNPchip (>= 1.15.0), stats, Biobase, lattice, utils
+Depends: R (>= 2.13.0), IRanges, oligoClasses (>= 1.15.26), methods, stats
+Imports: SNPchip (>= 1.15.0), stats, Biobase, lattice, utils, IRanges
 Suggests: genomewidesnp6Crlmm, hapmapsnp6, RColorBrewer, genefilter, RSQLite
 Enhances: HapmapCrlmmAffySet
 Description:  Hidden Markov Models for characterizing chromosomal alterations in high throughput SNP arrays
@@ -18,6 +18,7 @@ Collate:  AllGenerics.R
 	  methods-RangedDataHMM.R
 	  methods-HmmOptionList.R
 	  methods-CNSet.R
+	  methods-matrix.R
 	  methods-SnpSet.R
 	  functions.R
 	  utils.R
