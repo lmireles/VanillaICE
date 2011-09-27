@@ -967,14 +967,105 @@ xypanel <- function(x, y,
 	gt <- gt[subscripts]
 	hets.index <- which(gt == 2)
 	hom.index <- which(gt == 1 | gt == 3)
-	if(length(hom.index) > 0)
-		lpoints(x[hom.index], y[hom.index], col=col.hom, fill=fill.hom,...)
-	if(any(!is.snp))
-		lpoints(x[!is.snp], y[!is.snp], col=col.np, fill=fill.np, ...)
-	if(length(hets.index) > 0)
-		lpoints(x[hets.index], y[hets.index], col=col.het, fill=fill.het, ...)
+	if(all(!c("col", "fill") %in% names(list(...)))){
+		if(any(!is.snp))
+			lpoints(x[!is.snp], y[!is.snp], col=col.np,
+				fill=fill.np, ...)
+		if(length(hom.index) > 0)
+			lpoints(x[hom.index], y[hom.index], col=col.hom,
+				fill=fill.hom, ...)
+
+		if(length(hets.index) > 0)
+			lpoints(x[hets.index], y[hets.index],
+				col=col.het,
+				fill=fill.het, ...)
+	}
 	j <- panel.number()
 	lrect(xleft=start(range)[j]/1e6, xright=end(range)[j]/1e6,
 	      ybottom=-10, ytop=10, ...)
 }
 
+##
+## AD-HOC
+updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
+	## assume CN is a vector.  Fit EM independently for each
+	## sample
+	## - might want to do separately for snps, nps
+	##
+	## compute the responsibilities
+	##
+	sigma <- sigma[1]
+	##pi <- exp(log.initialPr)
+	dup.index <- which(duplicated(mu))
+	S <- length(mu)
+	if(length(dup.index) > 0){
+		mu <- unique(mu)
+		L <- length(mu)
+	} else L <- S
+	##pi <- rep(1/L, L)
+	pi <- rep(NA, L)
+	pi[3] <- 0.5
+	pi[c(1,2, 4, 5)] <- (1-0.5)/4
+	## fix the sd.  Update the means via em.
+	##gamma <- vector("list", L)
+	gamma <- matrix(NA, length(x), L)
+	den <- matrix(NA, length(x), L)
+	##num <- vector("list", L-1)
+	num <- matrix(NA, length(x), L)
+	epsilon <- 0.01
+	for(iter in seq_len(nUpdates)){
+		if(iter > nUpdates) break()
+		for(i in seq_len(L)){
+			den[, i] <- pi[i]*dnorm(x, mean=mu[i], sd=sigma)
+		}
+		D <- rowSums(den, na.rm=TRUE)
+		for(i in seq_len(L)){
+			num <- den[, i] ##pi[i] * dnorm(x, mu[i], sigma)
+			gamma[, i] <- num/D
+		}
+		rs <- rowSums(gamma, na.rm=TRUE)
+		gamma <- gamma/rs
+		total.gamma <- apply(gamma, 2, sum, na.rm=TRUE)
+		##
+		## update the means with contraints
+		##
+		mu.new <- rep(NA, length(mu))
+		for(i in seq_len(L)){
+			if(sum(gamma[, i],na.rm=TRUE) < 0.0001) {
+				mu.new[i] <- mu[i]
+				next()
+			}
+			tmp <- sum(gamma[, i] * x, na.rm=TRUE)/total.gamma[i]
+			if(i > 1 & i < L){
+				## mu[i-1]+sigma < mu[i] < mu[i+1] - sigma
+				i1 <- tmp < (mu[i-1] + 1.5*sigma)
+				i2 <- tmp > (mu[i+1] - 1.5*sigma)
+				if(i1 | i2){
+					if(i1)## & tmp < (mu[i+1] -sigma)){
+						mu.new[i] <- mu[i-1]+1.5*sigma
+					if(i2)
+						mu.new[i] <- mu[i+1]-1.5*sigma
+				} else mu.new[i] <- tmp
+			}
+			if(i == 1){
+				mu.new[1] <- ifelse(tmp < (mu[2] - 1.5*sigma), tmp, mu[2]-1.5*sigma)
+			}
+			if(i == L){
+				mu.new[L] <- ifelse(tmp > mu[L-1] + 1.5*sigma, tmp, mu[L-1]+1.5*sigma)
+			}
+		}
+		pi.new <- apply(gamma, 2, mean, na.rm=TRUE)
+		pi <- pi.new
+		##dp <- abs(sum(mu - mu.new)) + abs(sum(pi.new-pi))
+		dp <- abs(sum(mu-mu.new))
+		mu <- mu.new
+		if(dp < epsilon) break()
+	}
+	if(length(dup.index) > 0){
+		tmp <- rep(NA, S)
+		tmp[-dup.index] <- mu
+		tmp[dup.index] <- tmp[dup.index-1]
+		mu <- tmp
+	}
+	return(mu)
+}
