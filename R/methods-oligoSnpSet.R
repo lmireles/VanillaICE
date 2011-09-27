@@ -129,11 +129,13 @@ setMethod("sd", signature(x="oligoSnpSet"),
 
 setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDataCNV"),
 	  function(x, data, range, frame=0L, ...){
-		  mm <- findOverlaps(range, data, frame=frame)
+		  ## for now
+		  ##if(nrow(range) > 1) frame <- 0L
+		  rm <- findOverlaps(range, data, maxgap=frame) ## RangesMatching
+		  mm <- matchMatrix(rm)
 		  mm.df <- data.frame(mm)
 		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
-		  marker.index <- unique(mm.df$subject)
-		  ##marker.index <- featuresInRange(data, rd, FRAME=frame)
+		  marker.index <- mm.df$subject
 		  sample.index <- match(sampleNames(range), sampleNames(data))
 		  sample.index <- unique(sample.index)
 		  data <- data[marker.index, sample.index]
