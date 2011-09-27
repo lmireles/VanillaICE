@@ -68,13 +68,9 @@ oligoSet <- new("oligoSnpSet",
 oligoSet <- oligoSet[!is.na(chromosome(oligoSet)), ]
 oligoSet <- oligoSet[order(chromosome(oligoSet), position(oligoSet)),]
 oligoSet <- oligoSet[chromosome(oligoSet) < 3, ]
-hmmOpts <- hmm.setup(oligoSet,
-		     copynumberStates=log2(c(1, 2, 2, 3)),
-		     states=c("hem-del", "ROH", "normal", "amp"),
-		     normalIndex=3,
-		     log.initialP=rep(log(1/4), 4),
-		     prGenotypeHomozygous=c(0.99, 0.99, 0.7, 0.7))
+hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 fit <- hmm(oligoSet, hmmOpts, k=3)
+xyplot(cn~x, oligoSet, range=fit[4, ], frame=2e6,pch=21, cex=0.5, panel=xypanel)
 
 ## Useful accessors for RangedData
 ranges(fit)

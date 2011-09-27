@@ -18,14 +18,14 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 		  for(j in 1:ncol(object)){
 			  cn <- object[, j, drop=FALSE]
 			  s <- stdev[, j, drop=FALSE]
+			  mu <- updateMu(x=cn, mu=cnStates, sigma=s)
 			  I <- which(!is.na(as.numeric(cn)))
 			  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
 			  cnvector <- as.numeric(cn)[I]
 			  prOutlier <- probabilityOutlier(cnvector, k=k)
 			  for(l in seq_along(cnStates)){
-				  mu <- cnStates[l]
 				  tmp <- (1-prOutlier) * dnorm(x=cnvector,
-							       mean=cnStates[l],
+							       mean=mu[l],##cnStates[l],
 							       sd=as.numeric(s)[I]) +
 								       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
 				  emission.cn[I, j, l] <- tmp
@@ -33,6 +33,8 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 		  }
 		  return(log(emission.cn))
 	  })
+
+
 
 setMethod("gtEmission", signature(object="matrix"),
 	  function(object, hmmOptions, gt.conf, is.snp, cdfName, ...){
@@ -44,7 +46,6 @@ setMethod("gtEmission", signature(object="matrix"),
 			  verbose <- hmmOptions$verbose
 			  stopifnot(length(p) == length(states))
 			  if(!is.numeric(object)) stop("genotypes must be integers (1=AA, 2=AB, 3=BB) or NA (missing)")
-
 			  emission <- array(object, dim=c(nrow(object), ncol(object), length(states))) ##dimnames=list(featureNames(object), sampleNames(object), states))
 			  missingGT <- any(is.na(object))
 			  for(s in seq(along=states)){

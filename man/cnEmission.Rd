@@ -75,13 +75,6 @@ oligoSet <- order(oligoSet)
 cn.emit <- cnEmission(oligoSet, k=5,
 		      cnStates=log2(c(0.1, 1, 2, 3, 4)),
 		      is.log=TRUE)
-
-## Note that we require the features to be ordered by
-## chromosome and physical position
-cn.states <- log2(c(0.1, 1, 2, 3, 4))
-oligoSet2 <- oligoSet[sample(seq_len(nrow(oligoSet)), nrow(oligoSet)), ]
-tryCatch(cnEmission(oligoSet2, cnStates=cn.states, is.log=TRUE), error=function(e) NULL)
-oligoSet3 <- order(oligoSet)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

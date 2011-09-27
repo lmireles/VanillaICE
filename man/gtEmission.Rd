@@ -92,21 +92,10 @@ oligoSet <- order(oligoSet)
 ## Here, the probability of a missing genotype is 5 times as likely
 ## for a homozygous-deletion than any of the other states
 ##
-hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE,
-			 copynumberStates=0:4,
-			 prGtMis=c(1/2, 0.1, 0.1, 0.1, 0.1),
-			 prGtHom=c(0.5, 0.99, 0.7, 0.6, 0.6))
+hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
 gt.emit <- gtEmission(oligoSet, hmmOpts)
-
 ## ICE is TRUE
-hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=TRUE,
-			 copynumberStates=c(0,1,2,2,3,4),
-			 rohStates=c(FALSE,TRUE,TRUE,FALSE,FALSE),
-			 normalIndex=4,
-			 prHetCalledHom=0.001,
-			 prHetCalledHet=0.995,
-			 prHomInNormal=0.7,
-			 prHomInRoh=0.999)
+hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=TRUE)
 tryCatch(gtEmission(oligoSet, hmmOpts), error=function(e) "Annotation platform not supported. See icePlatforms()")
 annotation(oligoSet) %in% icePlatforms()
 
