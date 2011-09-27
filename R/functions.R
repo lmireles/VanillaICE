@@ -985,9 +985,11 @@ xypanel <- function(x, y,
 	      ybottom=-10, ytop=10, ...)
 }
 
+
 ##
 ## AD-HOC
 updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
+	if(nUpdates==0) return(mu)
 	## assume CN is a vector.  Fit EM independently for each
 	## sample
 	## - might want to do separately for snps, nps
@@ -1002,10 +1004,7 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		mu <- unique(mu)
 		L <- length(mu)
 	} else L <- S
-	##pi <- rep(1/L, L)
-	pi <- rep(NA, L)
-	pi[3] <- 0.5
-	pi[c(1,2, 4, 5)] <- (1-0.5)/4
+	pi <- rep(1/L, L)
 	## fix the sd.  Update the means via em.
 	##gamma <- vector("list", L)
 	gamma <- matrix(NA, length(x), L)

@@ -83,7 +83,8 @@ setMethod("cnEmission", signature(object="CopyNumberSet"),
 		  sds <- sd(object)
 		  emit <- cnEmission(object=CN, stdev=sds,
 				     k=k, cnStates=cnStates,
-				     is.log=is.log, ...)
+				     is.log=is.log,
+				     is.snp=isSnp(object), ...)
 		  return(emit)
 	  })
 

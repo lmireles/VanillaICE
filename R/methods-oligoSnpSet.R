@@ -3,7 +3,8 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  verbose <- hmm.params[["verbose"]] > 0
 		  log.beta.cn <- cnEmission(object,
 					    cnStates=hmm.params[["copynumberStates"]],
-					    is.log=hmm.params[["is.log"]], ...)
+					    is.log=hmm.params[["is.log"]],
+					    is.snp=isSnp(object), ...)
 		  log.beta.gt <- gtEmission(object, hmm.params, ...)
 		  ##log.emission <- emit(object, hmm.params)
 		  log.beta <- log.beta.cn+log.beta.gt
@@ -160,7 +161,7 @@ setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDat
 
 
 setMethod("cnEmission", signature(object="oligoSnpSet"),
-	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, ...){
+	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, is.snp, ...){
 		  ##fn <- featureNames(object)
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
@@ -168,7 +169,7 @@ setMethod("cnEmission", signature(object="oligoSnpSet"),
 		  sds <- sd(object)
 		  emit <- cnEmission(object=CN, stdev=sds,
 				     k=k, cnStates=cnStates,
-				     is.log=is.log, ...)
+				     is.log=is.log, is.snp=is.snp, ...)
 		  return(emit)
 	  })
 

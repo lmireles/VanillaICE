@@ -41,8 +41,8 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 				  rm(cnset.batch)
 				  ##oligoSet <- centerAutosomesAt(oligoSet, at=2)
 				  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
-				  hmmOpts$verbose <- 0L
-				  results[[m]] <- hmm(oligoSet, hmmOpts, k=k)
+				  hmm.params$verbose <- 0L
+				  results[[m]] <- hmm(oligoSet, hmm.params, k=k)
 				  if(verbose) setTxtProgressBar(pb, m)
 				  m <- m+1
 			  }

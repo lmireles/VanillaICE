@@ -1,5 +1,5 @@
 setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
-	  function(object, stdev, k=5, cnStates, is.log=FALSE, ...){
+	  function(object, stdev, k=5, cnStates, is.log=FALSE, is.snp, ...){
 		  stopifnot(all(dim(object) == dim(stdev)))
 		  if(any(colSums(is.na(object)) == nrow(object))){
 			  stop("Some samples have all missing values. Exclude these samples before continuing.")
@@ -16,19 +16,39 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 		  if(any(object < MIN.CN, na.rm=TRUE)) object[object < MIN.CN] <- MIN.CN
 		  if(any(object > MAX.CN, na.rm=TRUE)) object[object > MAX.CN] <- MAX.CN
 		  for(j in 1:ncol(object)){
-			  cn <- object[, j, drop=FALSE]
-			  s <- stdev[, j, drop=FALSE]
-			  mu <- updateMu(x=cn, mu=cnStates, sigma=s)
-			  I <- which(!is.na(as.numeric(cn)))
-			  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-			  cnvector <- as.numeric(cn)[I]
-			  prOutlier <- probabilityOutlier(cnvector, k=k)
-			  for(l in seq_along(cnStates)){
-				  tmp <- (1-prOutlier) * dnorm(x=cnvector,
-							       mean=mu[l],##cnStates[l],
-							       sd=as.numeric(s)[I]) +
-								       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
-				  emission.cn[I, j, l] <- tmp
+			  snp.index <- which(is.snp)
+			  if(length(snp.index) > 0){
+				  cn <- object[snp.index, j, drop=FALSE]
+				  s <- stdev[snp.index, j, drop=FALSE]
+				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s)
+				  I <- which(!is.na(as.numeric(cn)))
+				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
+				  cnvector <- as.numeric(cn)[I]
+				  prOutlier <- probabilityOutlier(cnvector, k=k)
+				  for(l in seq_along(cnStates)){
+					  tmp <- (1-prOutlier) * dnorm(x=cnvector,
+								       mean=mu.snp[l],##cnStates[l],
+								       sd=as.numeric(s)[I]) +
+									       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
+					  emission.cn[snp.index[I], j, l] <- tmp
+				  }
+			  }  ## length(snp.index) > 0
+			  np.index <- which(!is.snp)
+			  if(length(np.index) > 0){
+				  cn <- object[np.index, j, drop=FALSE]
+				  s <- stdev[np.index, j, drop=FALSE]
+				  mu.np <- updateMu(x=cn, mu=cnStates, sigma=s)
+				  I <- which(!is.na(as.numeric(cn)))
+				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
+				  cnvector <- as.numeric(cn)[I]
+				  prOutlier <- probabilityOutlier(cnvector, k=k)
+				  for(l in seq_along(cnStates)){
+					  tmp <- (1-prOutlier) * dnorm(x=cnvector,
+								       mean=mu.np[l],##cnStates[l],
+								       sd=as.numeric(s)[I]) +
+									       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
+					  emission.cn[np.index[I], j, l] <- tmp
+				  }
 			  }
 		  }
 		  return(log(emission.cn))
