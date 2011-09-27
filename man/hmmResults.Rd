@@ -19,20 +19,18 @@
 \seealso{\code{\link{xyplot}}}
 
 \examples{
+	data(oligoSetExample, package="oligoClasses")
+	oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
+	hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 	\dontrun{
-		data(oligoSetExample, package="oligoClasses")
-		oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
-		hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 		hmmResults <- hmm(oligoSet, hmmOpts, k=3)
+		save(hmmResults, file="~/Software/VanillaICE/data/hmmResults.rda")
 	}
 	data(hmmResults)
 	state(hmmResults)
 	hmmOpts$states[state(hmmResults)]
 	##
-	## Plot data surrounding one range
-	data(oligoSet)
-	##
-	## a region of homozygosity
+	## Plot region of homozygosity
 	##  (Note that the formula cn~x is required at this time)
 	xyplot(cn~x, oligoSet, range=hmmResults[2, ], frame=10e6,
 	       panel=xypanel, pch=21, cex=0.6)
