@@ -3,6 +3,7 @@ importClassesFrom(methods, ANY, character, data.frame, "function", integer, matr
 importMethodsFrom(methods, initialize, show)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
 importMethodsFrom(Biobase, sampleNames)
+importFrom(Biobase,rowMedians)
 importMethodsFrom(oligoClasses, open, close, coverage2, state)
 importMethodsFrom(IRanges, order)
 importFrom(oligoClasses, RangedDataHMM)
