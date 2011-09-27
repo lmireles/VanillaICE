@@ -4,7 +4,7 @@
 	Calculate robust estimates of the standard deviation
 }
 \description{
-	Uses the median absolute deviation (MAD) to calculate robust estimates of the standard deviation 
+	Uses the median absolute deviation (MAD) to calculate robust estimates of the standard deviation
 }
 \usage{
 robustSds(x, takeLog = FALSE, ...)
@@ -22,7 +22,7 @@ robustSds(x, takeLog = FALSE, ...)
 }
 }
 \details{
-	
+
 	For matrices \code{x} with 4 or more samples, the row-wise MAD
 	(SNP-specific sds) are scaled by sample MAD / median(sample
 	MAD).
@@ -35,7 +35,7 @@ robustSds(x, takeLog = FALSE, ...)
 	Matrix of standard deviations.
 }
 \examples{
-	data(locusLevelData)
+	data(locusLevelData, package="oligoClasses")
 	sds <- robustSds(locusLevelData[["copynumber"]]/100,
 			 takeLog=TRUE)
 

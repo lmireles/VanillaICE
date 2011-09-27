@@ -59,7 +59,7 @@ hmm(object, hmm.params, ...)
   }
 
 \examples{
-data(locusLevelData)
+data(locusLevelData, package="oligoClasses")
 oligoSet <- new("oligoSnpSet",
 		copyNumber=log2(locusLevelData[["copynumber"]]/100),
 		call=locusLevelData[["genotypes"]],

@@ -86,7 +86,7 @@ Only chromosomes 1-24 supported (23=X and 24 = Y).
   \code{\link{cnEmission}}, \code{\link{gtEmission-methods}}
 }
 \examples{
-data(oligoSetExample)
+data(oligoSetExample, package="oligoClasses")
 oligoSet <- order(oligoSet)
 ##
 ## Here, the probability of a missing genotype is 5 times as likely

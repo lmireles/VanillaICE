@@ -124,10 +124,10 @@ Rob Scharpf
 \examples{
   if(require("crlmm")){
     data(sample.CNSet, package="crlmm")
-    hmm.params <- HmmOptionList(cnSet)
+    hmm.params <- HmmOptionList(sample.CNSet)
     hmm.params
   }
-  data(oligoSetExample)
+  data(oligoSetExample, package="oligoClasses")
   hmm.params <- HmmOptionList(oligoSet)
   hmm.params
 }
