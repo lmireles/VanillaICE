@@ -87,15 +87,4 @@ setMethod("cnEmission", signature(object="CopyNumberSet"),
 		  return(emit)
 	  })
 
-setMethod("checkOrder", signature(object="CopyNumberSet"),
-	  function(object, verbose=FALSE){
-		  .checkOrder(object, verbose)
-	  })
 
-
-
-setMethod("order", "CopyNumberSet",
-	  function(..., na.last=TRUE, decreasing=FALSE){
-		  object <- list(...)[[1]]
-		  chromosomePositionOrder(object)
-	  })

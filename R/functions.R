@@ -779,29 +779,6 @@ invalidGtConfidence <- function(x){
 	is.na(x) | x < 0 | x > 1 | is.nan(x) | is.infinite(x)
 }
 
-.checkOrder <- function(object, verbose=FALSE){
-	d <- diff(order(chromosome(object), position(object)))
-	if(any(d < 0)){
-		if(verbose)
-			warning("Object should be ordered by chromosome and physical position.\n",
-				"Try \n",
-				"> object <- order(object) \n")
-		return(FALSE)
-	}
-	TRUE
-
-}
-
-chromosomePositionOrder <- function(object){
-	is.ordered <- checkOrder(object)
-	if(!is.ordered){
-		message("Ordering ", class(object), " object by chromosome and physical position")
-		index <- order(chromosome(object), position(object))
-		object <- object[index, ]
-	}
-	return(object)
-}
-
 getSds <- function(object, na.rm=TRUE){
 	cn.conf <- cnConfidence(object)
 	stopifnot(all(chromosome(object) <= 24))
@@ -1000,3 +977,4 @@ xypanel <- function(x, y,
 	lrect(xleft=start(range)[j]/1e6, xright=end(range)[j]/1e6,
 	      ybottom=-10, ytop=10, ...)
 }
+

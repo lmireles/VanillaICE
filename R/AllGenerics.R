@@ -1,5 +1,5 @@
 ##setGeneric("calculateEmission", function(object, ...) standardGeneric("calculateEmission"))
-setGeneric("checkOrder", function(object, verbose=FALSE) standardGeneric("checkOrder"))
+
 ##setGeneric("computeEmission", function(object, hmmOptions) standardGeneric("computeEmission"))
 ##setGeneric("computeHmm", function(object, hmmOptions) standardGeneric("computeHmm"))
 ##setGeneric("plot", function(object, hmm.params, ...) standardGeneric("plot"))

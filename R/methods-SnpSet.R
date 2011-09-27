@@ -80,18 +80,6 @@ setMethod("gtEmission", signature(object="SnpSet"),
 		  return(log.emit)
 	  })
 
-setMethod("order", "SnpSet",
-	  function(..., na.last=TRUE, decreasing=FALSE){
-		  object <- list(...)[[1]]
-		  chromosomePositionOrder(object)
-	  })
-
-
-setMethod("checkOrder", signature(object="SnpSet"),
-	  function(object, verbose=FALSE){
-		  .checkOrder(object, verbose)
-	  })
-
 setMethod("xyplot", signature(x="formula", data="SnpSet"),
 	  function(x, data, ...){
 		  xyplot2(x, data, ...)

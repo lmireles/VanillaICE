@@ -14,14 +14,15 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 		  } else sample.index <- seq(length=ncol(object))
 		  batch.index <- split(sample.index, batch(object)[sample.index])
 		  hmm.params[["verbose"]] <- 0L
-		  chrom <- unique(chromosome(object))
+		  chrom <- unique(chromosome(object, na.rm=TRUE))
+		  chrom <- chrom[chrom <= 23]
 		  NN <- length(chrom) * length(batch.index)
 		  autosome.index <- which(chromosome(object) < 23)
 		  if(verbose){
 			  message("Estimating standard deviation (s) using the median absolute deviation\n",
-				  "of the total copy number across autosomal markers.\n",
-				  "Emission probabilities estimated using Uniform-Gaussian mixture.\n",
-				  "Gaussian component for sample j is N(mu, s_j).")
+				  "of the total copy number across autosomal markers.\n")
+##				  "Emission probabilities estimated using Uniform-Gaussian mixture.\n",
+##				  "Gaussian component for sample j is N(mu, s_j).")
 			  pb <- txtProgressBar(min=0, max=NN, style=3)
 		  }
 		  results <- vector("list", NN)
@@ -34,10 +35,13 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 				  I <- which(chromosome(object) == CHR)
 				  cnset.batch <- object[I, J]
 				  oligoSet <- as(cnset.batch, "oligoSnpSet")
-				  oligoSet <- oligoSet[order(position(oligoSet)), ]
+				  is.ordered <- checkOrder(oligoSet)
+				  if(!is.ordered)
+					  oligoSet <- order(oligoSet)
 				  rm(cnset.batch)
 				  oligoSet <- centerAutosomesAt(oligoSet, at=2)
-				  hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
+				  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
+				  hmmOpts$verbose <- 0L
 				  results[[m]] <- hmm(oligoSet, hmmOpts, k=k)
 				  if(verbose) setTxtProgressBar(pb, m)
 				  m <- m+1

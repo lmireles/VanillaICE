@@ -5,8 +5,10 @@ importFrom(utils, setTxtProgressBar, txtProgressBar)
 importMethodsFrom(Biobase, sampleNames)
 importFrom(Biobase,rowMedians)
 importMethodsFrom(oligoClasses, open, close, coverage2, state)
-importMethodsFrom(IRanges, order)
+##importMethodsFrom(IRanges, order)
 importFrom(oligoClasses, RangedDataHMM)
+importFrom(oligoClasses, order)
+importMethodsFrom(oligoClasses, order, checkOrder)
 importFrom(methods, "@<-", callNextMethod, new, validObject)
 importFrom(stats, update, sd)
 ##importMethodsFrom(IRanges, sd)
@@ -15,7 +17,7 @@ importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
 
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
-export(icePlatforms,order,sd)
-exportMethods(cnEmission, gtEmission, hmm, order, sd, xyplot)
+export(icePlatforms,sd)
+exportMethods(cnEmission, gtEmission, hmm, sd, xyplot)
 
 
