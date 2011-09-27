@@ -14,3 +14,9 @@ setGeneric("gtEmission", function(object, hmmOptions, gt.conf, is.snp, cdfName, 
 setGeneric("sd", useAsDefault=function(x, na.rm=FALSE) stats::sd(x, na.rm))
 setGeneric("xyplot2", function(x, data, range, frame=50e3L, ...) standardGeneric("xyplot2"))
 setGeneric("xyplot", useAsDefault=function(x, data, ...) lattice::xyplot(x, data, ...))
+
+
+setGeneric("baf", function(object) standardGeneric("baf"))
+setGeneric("lrr", function(object) standardGeneric("lrr"))
+setGeneric("lrr<-", function(object,value) standardGeneric("lrr<-"))
+setGeneric("baf<-", function(object,value) standardGeneric("baf<-"))

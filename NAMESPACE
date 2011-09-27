@@ -20,4 +20,11 @@ export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
 export(icePlatforms,sd)
 exportMethods(cnEmission, gtEmission, hmm, sd, xyplot)
 
+##exportClasses(BeadStudioSet)
+
+###importFrom(genoset, lrr, baf, "lrr<-", "baf<-")
+##exportMethods(baf, lrr, "baf<-", "lrr<-", initialize)
+
+
+
 
