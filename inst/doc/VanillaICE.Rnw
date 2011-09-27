@@ -164,23 +164,19 @@ cnConfidence(oligoSet) <- 1/sds
 %probabilities, emission probabilities, and transition probabilities.
 \subsection{Vanilla HMM}
 
-When jointly modeling the copy number and genotype data, we assume that
-the genotype estimates and copy number estimates are independent
-conditional on the underlying hidden state.  The emission probabilities
-for the genotypes are then calculated using either (i) assumptions of
-the probability of observing a homozygous genotype call given the
-underlying state. Note that the SNPs should be ordered by chromosome and
-physical position.
+When jointly modeling the copy number and genotype data, we assume
+that the genotype estimates and copy number estimates are independent
+conditional on the underlying hidden state.  The emission
+probabilities for the genotypes are then calculated using either (i)
+assumptions of the probability of observing a homozygous genotype call
+given the underlying state. Next we order the markers by chromosome
+and physical position.  The \Rfunction{hmm} method will order the
+\Robject{oligoSnpSet} object automatically, so the following step is
+not required.
 
 <<logscale>>=
-oligoSet <- oligoSet[order(chromosome(oligoSet), position(oligoSet)), ]
-hmmOpts <- hmm.setup(oligoSet,
-		     copynumberStates=log2(c(0.1, 1, 2, 2, 3)),
-		     states=c("hom-del", "hem-del", "ROH", "normal", "amp"),
-		     normalIndex=4,
-		     log.initialP=rep(log(1/5), 5),
-		     prGenotypeHomozygous=c(2/3, 0.99, 0.99, 0.7, 0.7),
-		     is.log=TRUE)
+oligoSet <- order(oligoSet)
+hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 @
 
 \noindent The viterbi algorithm is used to obtain the most likely
@@ -244,7 +240,7 @@ fit.van[2, ]
 To find the names of the 102 markers that are included in
 this genomic interval, one could do the following
 <<findOverlaps>>=
-mm <- findOverlaps(fit.van, oligoSet)
+mm <- matchMatrix(findOverlaps(fit.van, oligoSet))
 featureNames(oligoSet)[mm[,1]==2]
 @
 Multipanel displays can be useful for visualizing the low-level data
@@ -284,8 +280,8 @@ alterations in the simulated data by specifying \texttt{frame=2e6}.
 <<xyplotExample,fig=TRUE,include=FALSE, width=9, height=6,results=hide>>=
 ranges.altered <- fit.van[state(fit.van) != 4, ]
 xy.example <- xyplot(cn ~ x | range, oligoSet, range=ranges.altered, frame=2e6,
-			scales=list(x="free"), ylim=c(-0.5,4),
-			panel=xypanel, cex=0.4, pch=21, border="grey",
+		     scales=list(x="free"), ylim=c(-0.5,4),
+		     panel=xypanel, cex=0.4, pch=21, border="grey",
 		     ylab=expression(log[2]("copy number")))
 @
 \noindent See \texttt{?xyplot} for additional details.
@@ -319,13 +315,7 @@ which of the states are expected to be largely homozygous
 platforms and the Affy 100k platforms is not one of them.
 
 <<ice>>=
-hmmOpts <- hmm.setup(oligoSet,
-		     ICE=TRUE,
-		     copynumberStates=log2(c(0, 1, 2, 2, 3)),
-		     states=c("hom-del", "hem-del", "ROH", "normal", "amp"),
-		     normalIndex=3,
-		     log.initialPr=rep(log(1/5), 5),
-		     rohStates=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+hmmOpts <- hmm.setup(oligoSet, ICE=TRUE, rohStates=c(FALSE, TRUE, TRUE, FALSE, FALSE))
 res <- tryCatch(hmm(oligoSet, hmmOpts),
 		error=function(e) "platform not supported")
 print(res)
@@ -376,14 +366,8 @@ genotypes are ignored or are unavailable) can be fit as follows.
 cnSet <- new("CopyNumberSet",
 	     copyNumber=log2(locusLevelData[["copynumber"]]/100),
 	     annotation=locusLevelData[["platform"]])
-cnSet <- cnSet[order(chromosome(cnSet), position(cnSet)), ]
-cnSet <- cnSet[!is.na(chromosome(cnSet)), ]
 cnSet <- cnSet[chromosome(cnSet) <= 2, ]
-hmmOpts <- hmm.setup(cnSet,
-		     copynumberStates=log2(c(0.1, 1, 2, 3)),
-		     states=c("hom-del", "hem-del", "normal", "amp"),
-		     normalIndex=3,
-		     log.initialP=rep(log(1/4), 4))
+hmmOpts <- hmm.setup(cnSet, is.log=TRUE)
 fit.cn <- hmm(cnSet, hmmOpts)
 @
 
@@ -402,13 +386,7 @@ snpSet <- new("SnpSet",
 	      annotation=locusLevelData[["platform"]])
 featureData(snpSet) <- addFeatureAnnotation(snpSet)
 snpSet <- snpSet[chromosome(snpSet) < 3, ]
-snpSet <- snpSet[order(chromosome(snpSet), position(snpSet)), ]
-hmmOpts <- hmm.setup(snpSet,
-		     states=c("ROH", "normal"),
-		     normalIndex=2,
-		     log.initialP=rep(log(1/2), 2),
-		     prGenotypeHomozygous=c(0.99,0.7),
-		     TAUP=5e7)
+hmmOpts <- hmm.setup(snpSet)
 fit.gt <- hmm(snpSet, hmmOpts)
 @
 

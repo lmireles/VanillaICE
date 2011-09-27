@@ -8,14 +8,16 @@ Constructors for \code{HmmOptionList} class.  An object of the class
 contains most of the options for fitting the HMM.
 }
 \usage{
-HmmOptionList(object, copynumberStates = 0:4, states = paste("state",
-1:length(copynumberStates), sep = ""), ICE = FALSE, is.log = FALSE,
-scaleSds = TRUE, log.initialPr = log(rep(1/length(states),
-length(states))), normalIndex = 3L, prGtHom = c(1/3, 0.99, 0.7, 0.6,
-0.6), prGtMis = rep(1/length(states), length(states)), prHetCalledHom =
-0.001, prHetCalledHet = 0.995, prHomInNormal = 0.8, prHomInRoh = 0.999,
-rohStates = logical(), tau = 1e+08, a2n = 1, n2a = 1, a2a = 1, verbose =
-2L, ...)
+HmmOptionList(object, copynumberStates,
+	      states, ICE = FALSE, is.log = FALSE,
+	      scaleSds = TRUE,
+	      log.initialPr = log(rep(1/length(states), length(states))),
+	      normalIndex, prGtHom,
+	      prGtMis = rep(1/length(states), length(states)),
+	      prHetCalledHom = 0.001, prHetCalledHet = 0.995,
+	      prHomInNormal = 0.8, prHomInRoh = 0.999,
+	      rohStates, tau = 1e+08, a2n = 1, n2a = 1, a2a = 1,
+	      verbose = 2L, ...)
 hmm.setup(object, ...)
 }
 %- maybe also 'usage' for other objects documented here.
