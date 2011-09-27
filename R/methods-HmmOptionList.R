@@ -1,18 +1,18 @@
 HmmOptionList <- function(object,
-			  copynumberStates=0:4,
-			  states=paste("state", 1:length(copynumberStates), sep=""),
+			  copynumberStates,
+			  states, ##=paste("state", 1:length(copynumberStates), sep=""),
 			  ICE=FALSE,
 			  is.log=FALSE,
 			  scaleSds=TRUE,
 			  log.initialPr=log(rep(1/length(states), length(states))),
-			  normalIndex=3L,
-			  prGtHom=c(1/3, 0.99, 0.7, 0.6, 0.6), ##only used when ICE=FALSE
+			  normalIndex,
+			  prGtHom, ##=c(1/3, 0.99, 0.7, 0.6, 0.6), ##only used when ICE=FALSE
 			  prGtMis=rep(1/length(states), length(states)), ##not applicable when ICE is TRUE (no NA's from crlmm genotypes)
 			  prHetCalledHom=0.001, ## ignored unless ICE is TRUE
 			  prHetCalledHet=0.995, ## ignored unless ICE is TRUE
 			  prHomInNormal=0.8,    ## ignored unless ICE is TRUE
 			  prHomInRoh=0.999, ## ignored unless ICE is TRUE
-			  rohStates=logical(), ## ignored unless ICE is TRUE
+			  rohStates, ## ignored unless ICE is TRUE
 			  tau=1e8,
 			  a2n=1,
 			  n2a=1,
@@ -21,32 +21,69 @@ HmmOptionList <- function(object,
 	## to support previous API
 	if("prGenotypeHomozygous" %in% names(list(...)))
 		prGtHom <- list(...)[["prGenotypeHomozygous"]]
-##	new("HmmOptionList",
+	if(missing(copynumberStates)){
+		if(is.log){
+			copynumberStates <- switch(class(object),
+						   CNSet=log2(c(0.2, 1, 2, 2, 3, 4)),
+						   oligoSnpSet=log2(c(0.1,1,2,2,3,4)),
+						   SnpSet=NA,
+						   CopyNumberSet=log2(c(0.1,1,2,3,4)))
+		} else {
+			copynumberStates <- switch(class(object),
+						   CNSet=c(0, 1, 2, 2, 3, 4),
+						   oligoSnpSet=c(0,1,2,2,3,4),
+						   SnpSet=NA,
+						   CopyNumberSet=c(0,1,2,3,4))
+		}
+	}
 	if(!ICE){
 		prHetCalledHom <- prHetCalledHet <- prHomInNormal <- prHomInRoh <- rohStates <- NA
+		if(missing(prGtHom)){
+			prGtHom <- switch(class(object),
+					  CNSet=c(2/3, 0.99, 0.7, 0.99, 0.7, 0.7),
+					  oligoSnpSet=c(2/3, 0.99, 0.7, 0.99, 0.7, 0.7),
+					  SnpSet=c(0.99, 0.7),
+					  CopyNumberSet=NA)
+		}
 	} else{
 		prGtMis <- prGtHom <- NA
+		rohStates <- switch(class(object),
+				    SnpSet=c(TRUE, FALSE),
+				    oligoSnpSet=c(FALSE,TRUE,FALSE,TRUE,FALSE,FALSE),
+				    CNSet=c(FALSE,TRUE,FALSE,TRUE,FALSE,FALSE))
 	}
+	if(missing(states)){
+		states <- switch(class(object),
+				 CNSet=c("homDel", "hemDel", "normal", "ROH", "3copy", "4copy"),
+				 oligoSnpSet=c("homDel", "hemDel", "normal", "ROH", "3copy", "4copy"),
+				 SnpSet=c("ROH", "normal"),
+				 CopyNumberSet=c("homDel", "hemDel", "normal", "3copy", "4copy"))
+		normalIndex <- grep("normal", states)
+	}
+	if(missing(normalIndex)){
+		stop("'states' was specified by the user, but 'normalIndex' is missing")
+	}
+	stopifnot(normalIndex %in% seq_along(states))
 	res <- list(snpsetClass=class(object),
-	    copynumberStates=copynumberStates,
-	    states=states,
-	    ICE=ICE,
-	    is.log=is.log,
-	    scaleSds=scaleSds,
-	    log.initialPr=log.initialPr,
-	    normalIndex=normalIndex,
-	    prGtHom=prGtHom,
-	    prGtMis=prGtMis,
-	    prHetCalledHom=prHetCalledHom,
-	    prHetCalledHet=prHetCalledHet,
-	    prHomInNormal=prHomInNormal,
-	    prHomInRoh=prHomInRoh,
-	    rohStates=rohStates,
-	    tau=tau,
-	    a2n=a2n,
-	    n2a=n2a,
-	    a2a=a2a,
-	    verbose=verbose)
+		    copynumberStates=copynumberStates,
+		    states=states,
+		    ICE=ICE,
+		    is.log=is.log,
+		    scaleSds=scaleSds,
+		    log.initialPr=log.initialPr,
+		    normalIndex=normalIndex,
+		    prGtHom=prGtHom,
+		    prGtMis=prGtMis,
+		    prHetCalledHom=prHetCalledHom,
+		    prHetCalledHet=prHetCalledHet,
+		    prHomInNormal=prHomInNormal,
+		    prHomInRoh=prHomInRoh,
+		    rohStates=rohStates,
+		    tau=tau,
+		    a2n=a2n,
+		    n2a=n2a,
+		    a2a=a2a,
+		    verbose=verbose)
 	hmm.opts <- as(res, "HmmOptionList")
 	stopifnot(validObject(hmm.opts))
 	return(hmm.opts)
