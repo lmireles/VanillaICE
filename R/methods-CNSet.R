@@ -51,7 +51,6 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 		  return(rangedData)
 	  })
 
-
 setMethod("xyplot2", signature(x="formula", data="CNSet", range="RangedDataCNV"),
 	  function(x, data, range, frame=50e3L, ...){
 		  mm <- findOverlaps(range, data, frame=frame)
