@@ -39,7 +39,7 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 				  if(!is.ordered)
 					  oligoSet <- order(oligoSet)
 				  rm(cnset.batch)
-				  oligoSet <- centerAutosomesAt(oligoSet, at=2)
+				  ##oligoSet <- centerAutosomesAt(oligoSet, at=2)
 				  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
 				  hmmOpts$verbose <- 0L
 				  results[[m]] <- hmm(oligoSet, hmmOpts, k=k)
@@ -57,12 +57,13 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 
 setMethod("xyplot2", signature(x="formula", data="CNSet", range="RangedDataCNV"),
 	  function(x, data, range, frame=50e3L, ...){
-		  mm <- findOverlaps(range, data, frame=frame)
+		  z <- findOverlaps(range, data, maxgap=frame)
+		  mm <- matchMatrix(z)
 		  mm.df <- data.frame(mm)
 		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
 		  marker.index <- unique(mm.df$subject)
 		  ##marker.index <- featuresInRange(data, rd, FRAME=frame)
-		  sample.index <- match(sampleNames(range), sampleNames(data))
+		  sample.index <- match(unique(sampleNames(range)), sampleNames(data))
 		  data <- data[marker.index, sample.index]
 		  ## now we need to know the indices of
 		  ## each range after subsetting
@@ -70,6 +71,7 @@ setMethod("xyplot2", signature(x="formula", data="CNSet", range="RangedDataCNV")
 		  ## we assume that each range is from a different sample
 		  oligoset <- as(data, "oligoSnpSet")
 		  df <- as(oligoset, "data.frame")
+		  df$range.index <- mm.df$query
 		  xyplot(x, df,
 			 range=range,
 			 gt=df$gt,
