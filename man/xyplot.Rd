@@ -10,11 +10,12 @@
 xyplot(x, data, ...)
 }
 \arguments{
-  \item{x}{A \code{formula}.  }
+  \item{x}{A \code{formula}.  Currently, the formula must be one of \code{cn~x},
+    \code{cn ~ x | id} or \code{cn ~ x | range}.}
   \item{data}{A \code{CNSet} object.}
   \item{\dots}{A \code{RangedDataCNV} object must be passed by the name
     'range'. Additional arguments are passed to functions \code{panel.xyplot},
-    \code{lpoints}, and \code{lrect}.}
+    \code{lpoints}, and \code{lrect}. See examples.}
 }
 \details{
 
@@ -69,6 +70,15 @@ R. Scharpf
 
 }
 \examples{
+	## simulated data
+	data(oligoSetExample, package="oligoClasses")
+	hmmOpts <- HmmOptionList(oligoSet,
+				 copynumberStates=log2(c(0.1,1,2,2,3)))
+	## plot the 2nd range, framing the borders on each side by 2e6
+	## bases
+	fit <- hmm(oligoSet, hmmOpts)
+	xyplot(cn ~ x, data=oligoSet, range=fit[2,], frame=2e6,
+	       panel=xypanel, cex=0.5, pch=21, border="orange")
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

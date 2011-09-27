@@ -3,7 +3,7 @@
 \title{A panel function for plotting copy number versus physical position}
 \description{A panel function for \code{xyplot} for plotting copy number versus physical position.}
 \usage{
-xypanel(x, y, gt, is.snp, range, col.hom = "grey60", fill.hom = "lightblue", col.het = "grey60", fill.het = "salmon", col.np = "grey20", fill.np = "green3", ..., subscripts)
+xypanel(x, y, gt, is.snp, range, col.hom = "grey20", fill.hom = "lightblue", col.het = "grey20", fill.het = "salmon", col.np = "grey20", fill.np = "grey60", ..., subscripts)
 }
 \arguments{
   \item{x}{Physical position in megabases.}

@@ -954,12 +954,12 @@ xypanel <- function(x, y,
 		    gt,
 		    is.snp,
 		    range,
-		    col.hom="grey60",
+		    col.hom="grey20",
 		    fill.hom="lightblue",
-		    col.het="grey60" ,
+		    col.het="grey20" ,
 		    fill.het="salmon",
 		    col.np="grey20",
-		    fill.np="green3",
+		    fill.np="grey60",
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
 	panel.xyplot(x, y, ...)
