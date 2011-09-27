@@ -607,7 +607,7 @@ trioOptions <- function(opts,
 centerAutosomesAt <- function(x, at, ...){
 	stopifnot(!missing(at))
 	marker.index <- which(chromosome(x) <= 23)
-	cn <- copyNumber(x)[marker.index, ]
+	cn <- copyNumber(x)[marker.index, , drop=FALSE]
 	meds <- apply(cn, 2, median, na.rm=TRUE)
 	cn.cen <- sweep(cn, 2, meds) + at
 	copyNumber(x)[marker.index, ] <- cn.cen
