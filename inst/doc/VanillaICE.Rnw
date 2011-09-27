@@ -366,7 +366,7 @@ genotypes are ignored or are unavailable) can be fit as follows.
 cnSet <- new("CopyNumberSet",
 	     copyNumber=log2(locusLevelData[["copynumber"]]/100),
 	     annotation=locusLevelData[["platform"]])
-cnSet <- cnSet[chromosome(cnSet) <= 2, ]
+cnSet <- cnSet[chromosome(cnSet) <= 2 & !is.na(chromosome(cnSet)), ]
 hmmOpts <- hmm.setup(cnSet, is.log=TRUE)
 fit.cn <- hmm(cnSet, hmmOpts)
 @
@@ -418,6 +418,7 @@ legend("bottomleft", fill=cols, legend=hmmOpts$states, bty="n")
 
 \subsection{Outliers}
 
+%% could remove this section and discuss Uniform-Gaussian mixture
 Copy number outliers can cause the HMM to become too jumpy.  One
 approach to reduce the influence of outliers is to some
 \textit{light}-smoothing prior to fitting the HMM, as suggested in the
