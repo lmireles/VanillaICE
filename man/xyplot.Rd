@@ -64,6 +64,8 @@ R. Scharpf
 
 \seealso{
 
+	\code{\link[lattice]{xyplot}}
+
   To modify the plot appearance from the default, additional arguments
   can be passed to \code{\link{panel.xyplot}}, \code{\link{lpoints}}, and
   \code{\link{lrect}}.
@@ -72,13 +74,15 @@ R. Scharpf
 \examples{
 	## simulated data
 	data(oligoSetExample, package="oligoClasses")
-	hmmOpts <- HmmOptionList(oligoSet,
-				 copynumberStates=log2(c(0.1,1,2,2,3)))
-	## plot the 2nd range, framing the borders on each side by 2e6
-	## bases
-	fit <- hmm(oligoSet, hmmOpts)
-	xyplot(cn ~ x, data=oligoSet, range=fit[2,], frame=2e6,
-	       panel=xypanel, cex=0.5, pch=21, border="orange")
+	data(hmmResults)
+	## to visualize each range in it's own panel surrounded by a
+	## frame of 2,000,000 bases:
+	## (here the frames are overlapping, but the method could be
+	## applied more generally to a collection of ranges from
+	## different chromsomes and samples)
+	xyplot(cn ~ x | range, data=oligoSet, range=hmmResults, frame=2e6,
+	       panel=xypanel, cex=0.5, pch=21, border="orange",
+	       scales=list(x="free"))
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
