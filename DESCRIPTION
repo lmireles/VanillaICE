@@ -1,5 +1,5 @@
 Package: VanillaICE
-Version: 1.15.68
+Version: 1.15.69
 Title: A Hidden Markov Model for high throughput genotyping arrays
 Author: Robert Scharpf <rscharpf@jhsph.edu>, Kevin Scharpf, and  Ingo Ruczinski <ingo@jhsph.edu>
 Maintainer: Robert Scharpf <rscharpf@jhsph.edu>
@@ -12,7 +12,6 @@ License: LGPL-2
 LazyLoad: yes
 Collate:  AllGenerics.R
           AllClasses.R
-	  emission-methods.R
 	  methods-CopyNumberSet.R
 	  methods-oligoSnpSet.R
 	  methods-RangedDataHMM.R
