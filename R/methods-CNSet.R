@@ -28,19 +28,32 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 		  results <- vector("list", NN)
 		  m <- 1
 		  for(i in seq_along(batch.index)){
-			  for(j in seq_along(chrom)){
-				  CHR <- chrom[j]
-				  is.autosome <- CHR < 23
-				  J <- batch.index[[i]]
-				  I <- which(chromosome(object) == CHR)
-				  cnset.batch <- object[I, J]
+			  J <- batch.index[[i]]
+			  if(by.chromosome){
+				  for(j in seq_along(chrom)){
+					  CHR <- chrom[j]
+					  is.autosome <- CHR < 23
+					  I <- which(chromosome(object) == CHR)
+					  cnset.batch <- object[I, J]
+					  oligoSet <- as(cnset.batch, "oligoSnpSet")
+					  is.ordered <- checkOrder(oligoSet)
+					  if(!is.ordered)
+						  oligoSet <- order(oligoSet)
+					  rm(cnset.batch)
+					  ##oligoSet <- centerAutosomesAt(oligoSet, at=2)
+					  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
+					  hmm.params$verbose <- 0L
+					  results[[m]] <- hmm(oligoSet, hmm.params, k=k)
+					  if(verbose) setTxtProgressBar(pb, m)
+					  m <- m+1
+				  }
+			  } else {
+				  cnset.batch <- object[, J]
 				  oligoSet <- as(cnset.batch, "oligoSnpSet")
 				  is.ordered <- checkOrder(oligoSet)
 				  if(!is.ordered)
 					  oligoSet <- order(oligoSet)
 				  rm(cnset.batch)
-				  ##oligoSet <- centerAutosomesAt(oligoSet, at=2)
-				  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
 				  hmm.params$verbose <- 0L
 				  results[[m]] <- hmm(oligoSet, hmm.params, k=k)
 				  if(verbose) setTxtProgressBar(pb, m)
