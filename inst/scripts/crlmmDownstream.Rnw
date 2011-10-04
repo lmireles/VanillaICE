@@ -18,6 +18,7 @@
 \newcommand{\hmmparam}{\Robject{HmmParameter}}
 \newcommand{\crlmm}{\Rpackage{crlmm}}
 \newcommand{\oligo}{\Rpackage{oligo}}
+\newcommand{\code}[1]{\Robject{#1}}
 
 \newcommand{\cne}{\widehat{\text{CN}}}
 \newcommand{\gte}{\widehat{\text{GT}}}
@@ -40,143 +41,126 @@
 \maketitle
 
 <<loadCnSet>>=
+require("crlmm")
 library(VanillaICE)
-library(HapmapCrlmmAffySet)
+##library(HapmapCrlmmAffySet)
 library(RColorBrewer)
-if(!exists("hapmapSet")) data(hapmapSet)
-class(hapmapSet)
-dim(hapmapSet)
+##if(!exists("hapmapSet")) data(hapmapSet)
+##class(hapmapSet)
+##dim(hapmapSet)
 @
 
 <<echo=FALSE>>=
-setCacheDir("/nexsan2/disk3/rscharpf/VanillaICE")
+##setCacheDir("/nexsan2/disk3/rscharpf/VanillaICE")
 @
 
-\section{Small to moderate size datasets}
+\section{For datasets with more than 10 samples}
 
-For smaller datasets (e.g, fewer than 100 samples), it may be
-preferable to coerce the object of class \Rclass{CNSet} to a
-\Rclass{oligoSnpSet} prior to fitting the HMM.  The predictions from
-the HMM can then be visualized along side the marker-level estimates
-of copy number from \Rpackage{crlmm}.
+For datasets with more than 10 samples processed in a batch, copy
+number estimation using the linear model described in Scharpf et al,
+2010 is feasible.  Following the vignettes for copy number analysis in
+the \Rpackage{crlmm} package, one obtains an object of class
+\Robject{CNSet}.  Here we describe how to smooth the copy number
+estimates integrating information from the B allele frequencies.  We
+begin with a \Robject{CNSet} object containing the information on
+chromosome 8 for two samples.  These samples were processed as part of
+a larger batch, which is why estimates from the linear model are
+available.
 
-Coercion of a \Rclass{CNSet} object to an \Rclass{oligoSnpSet} object
-is illustrated in the following code chunk.  This coercion is not
-instantaneous as it may involve reading data from disk (if the
-\Robject{assayData} elements of the \Rclass{CNSet} object are
-\Rclass{ff}-derived objects), and computing the allele-specific
-estimates of copy number.
-
-<<coerce,cache=TRUE>>=
-oligoSet <- as(hapmapSet, "oligoSnpSet")
+<<sample.CNSet>>=
+data(sample.CNSet, package="crlmm")
 @
 
-<<gc, results=hide, echo=FALSE>>=
-rm(hapmapSet); gc()
+We begin by ordering the \Robject{CNSet} object by chromosome and
+physical position, then coercing the ordered \code{CNSet} object to an
+object of class \code{oligoSnpSet}.  If the \code{CNSet} object were
+very large, we might want to subset the \code{CNSet} by batch prior to
+subsetting. See the Section \ref{large:cnset} for details.  Here, the
+object is small by design and there is no need for additional
+subsetting.  After coercion, the copy number estimates are saved on
+the log base 2 scale.
+
+<<coerceToOligoSnpSet>>=
+sample.CNSet <- order(sample.CNSet)
+oligoSet <- as(sample.CNSet, "oligoSnpSet")
+range(copyNumber(oligoSet), na.rm=TRUE)
 @
 
-<<boxplot,fig=TRUE,width=8,height=6>>=
-##plot the data for a random subset of samples
-sample.index <- sample(1:ncol(oligoSet), 20)
-par(las=1)
-boxplot(data.frame(copyNumber(oligoSet)[, sample.index]), boxwex=0.5, col="green3",
-	pch=".", border="grey60", xaxt="n")
-par(las=0)
-axis(1, at=seq_along(sample.index), labels=sampleNames(oligoSet)[sample.index])
-box(col="grey")
+As BAFs may help improve the detection of hemizygous deletions and
+copy number duplications, we add estimates of the B allele frequencies
+to the \Robject{oligoSet} object as follows.
+
+<<BAFs>>=
+assayDataElement(oligoSet, "baf") <- calculateRBaf(sample.CNSet)[["baf"]]
 @
 
-<<checkSNR, fig=TRUE>>=
-snr <- oligoSet$SNR[]
-mads <- apply(copyNumber(oligoSet), 2, mad, na.rm=TRUE)
-par(las=1)
-graphics:::plot(mads, 1/snr, pch=21, cex=0.8, bg="grey70")
-abline(h=1/5, lty=2, col="grey")
+As in the \texttt{VanillaICE} vignette, we generate default parameters
+for the \Rfunction{hmm} using the \Robject{HmmOptionList} constructor.
+
+<<HmmOptionList>>=
+hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
 @
 
-Note that 1/SNR is proportional to the sample-level MAD.  Calculate
-the MAD for each marker and shrink to the sample-level MAD.
+We now smooth the copy number estimates, integrating emission
+probabilities obtained from copy number and the emission probabilities
+obtained from the BAFs. See the documentation for
+\Rfunction{cnEmission} and \Rfunction{bafEmission} for details
+regarding the estimation of emission probabilities.
 
-<<sds,cache=TRUE>>=
-sds <- VanillaICE:::robustSds2(copyNumber(oligoSet), DF.PRIOR=10)
+<<fitWithBAF>>=
+fit <- hmm(oligoSet, hmmOpts, use.baf=TRUE)
 @
 
-<<sdshist,fig=TRUE>>=
-hist(sds, col="lightblue", breaks=200)
+The \Robject{fit} object is an object of class \Rclass{RangedDataHMM}.
+Several useful accessors are defined for this class, including
+\Rfunction{sampleNames}, \Rfunction{state}, and
+\Rfunction{chromosome}.  In addition, \code{findOverlaps} methods
+defined for the class can be useful for identifying which markers in
+the original \code{oligoSet} object lie within a particular range.
+Methods for visualizing the low level summaries along with the
+inferred breakpoints for the copy number states make use of the
+\Rfunction{findOverlaps}.  For example, in the following code chunk we
+plot the copy number estimates color coded by genotype for each of the
+range.  Using the argument \code{frame}, we can include more or fewer
+markers to the left and right of the breakpoints. See the function
+\Rfunction{xypanel} for details on how to modify the appearance of the
+plotting symbols.
+
+
+<<visualizationCopyNumber,fig=TRUE>>=
+cnfig <- xyplot(cn ~ x | range, data=oligoSet, range=fit[1:10, ], frame=2e6,
+		panel=xypanel, cex=0.3, pch=21, border="blue",
+		scales=list(x="free", cex=0.6),
+		col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
+print(cnfig)
 @
 
-<<cnConfidence>>=
-cnConfidence(oligoSet) <- 1/sds
+<<visualizationBAFs,fig=TRUE>>=
+baffig <- xyplot(baf ~ x | range, data=oligoSet, range=fit[1:10, ], frame=2e6,
+		 panel=xypanel, cex=0.3, pch=21, border="blue",
+		 scales=list(x="free", cex=0.6),
+		 col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
+print(baffig)
 @
 
-<<clean,echo=FALSE,results=hide>>=
-suppressWarnings(rm(sds, mads, snr, sample.index)); gc()
+
+\subsection{Large \code{CNSet} objects}
+\label{large:cnset}
+
+Recall that any subset operation pulls the data from disk to RAM.
+
+<<subsetLargeCNSet,eval=FALSE>>=
+sample.index.list <- split(seq_len(ncol(bigCnSet)), batch(bigCnSet))
+for(i in seq_along(sample.index.list)){
+	sample.index <- sample.index.list[[i]]
+	cnSet <- bigCnSet[, sample.index]
+	cnSet <- order(cnSet)
+	oligoSet <- as(cnSet, "oligoSnpSet")
+	## and so on
+}
 @
 
 
-<<center>>=
-oligoSet <- VanillaICE:::centerCopyNumber(oligoSet, at=2)
-@
-
-<<hmmOpts>>=
-hmmOpts <- VanillaICE:::newHmmOptionList(object=oligoSet, verbose=1L)
-@
-
-<<hmm, cache=TRUE>>=
-fit <- hmm2(oligoSet, hmmOpts)
-@
-
-<<coerce2RangedDataCn>>=
-fit <- as(fit, "RangedDataCn")
-@
-
-Visualizing the results:
-
-<<plotForRangedDataCn>>=
-fig <- plot(fit, hmmOpts, show.coverage=FALSE)
-fig$x.scales[["tick.number"]] <- 20
-@
-
-<<rectanglefig,fig=TRUE, width=8, height=8>>=
-print(fig)
-@
-
-TODO: show how the color scheme could be modified.
-
-TODO: plot method for low level data that uses locus zoom
-
-\section{Large datasets}
-
-Idea: define hmm2 method for CNSet. Coersion to oligoSnpSet inside of
-for loop.  Center and compute sds as before.  Extend to allow
-parallelization.
-
-<<clean, echo=FALSE>>=
-suppressWarnings(rm(oligoSet, fit, res.altered, palette, df)); gc()
-@
-
-<<reloadHapmap>>=
-if(!exists("hapmapSet")) data(hapmapSet)
-@
-
-<<hmmCNSet,cache=TRUE>>=
-fit2 <- hmm2(hapmapSet, hmmOpts)
-@
-
-TODO: test that it works for ff objects.
-
-<<coercion2RangedDataCn>>=
-fit2 <- as(fit2, "RangedDataCn")
-@
-
-<<plotmethod>>=
-fig <- plot(fit2, hmmOpts, show.coverage=FALSE)
-fig$x.scales[["tick.number"]] <- 20
-@
-
-<<rectangelfig2,fig=TRUE,width=8,height=8>>=
-print(fig)
-@
 
 \section{Session Information}
 <<sessionInfo,results=tex>>=
