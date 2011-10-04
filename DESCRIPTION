@@ -5,7 +5,7 @@ Author: Robert Scharpf <rscharpf@jhsph.edu>, Kevin Scharpf, and  Ingo Ruczinski 
 Maintainer: Robert Scharpf <rscharpf@jhsph.edu>
 Depends: R (>= 2.13.0), IRanges, oligoClasses (>= 1.15.40), methods, stats
 Imports: SNPchip (>= 1.15.0), stats, Biobase, lattice, utils, IRanges
-Suggests: crlmm, genomewidesnp6Crlmm, hapmapsnp6, RColorBrewer, genefilter, RSQLite
+Suggests: crlmm (>= 1.11.51), genomewidesnp6Crlmm, hapmapsnp6, RColorBrewer, genefilter, RSQLite
 Enhances: HapmapCrlmmAffySet, DNAcopy, crlmm
 Description:  Hidden Markov Models for characterizing chromosomal alterations in high throughput SNP arrays
 License: LGPL-2
