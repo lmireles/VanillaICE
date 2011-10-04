@@ -57,6 +57,13 @@ xyplot(x, data, ...)
   integer called 'frame' that indicates how much contextual data we
   should plot surrounding each genomic interval.
 
+  If the \code{lattice} package is loaded after loading
+  \code{VanillaICE}, the generic definition for \code{xyplot} in
+  \code{VanillaICE} will be masked. To unmask the S4 generic in
+  \code{VanillaICE}, do
+
+  xyplot <- VanillaICE:::xyplot
+
 }
 \author{
 R. Scharpf
@@ -64,7 +71,7 @@ R. Scharpf
 
 \seealso{
 
-	\code{\link[lattice]{xyplot}}
+	\code{\link[lattice]{xyplot}}, \code{\link{xypanel}}
 
   To modify the plot appearance from the default, additional arguments
   can be passed to \code{\link{panel.xyplot}}, \code{\link{lpoints}}, and
@@ -83,6 +90,11 @@ R. Scharpf
 	xyplot(cn ~ x | range, data=oligoSet, range=hmmResults, frame=2e6,
 	       panel=xypanel, cex=0.5, pch=21, border="orange",
 	       scales=list(x="free"))
+
+   if(require("lattice")){
+        ## now the generic for xyplot is masked.  Must do
+        xyplot <- VanillaICE:::xyplot
+   }
 
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the

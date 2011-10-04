@@ -1,8 +1,8 @@
-Sweave2pdf <- function(fname, ...){
-	fname <- strsplit(fname, ".Rnw")[[1]][[1]]
-	suppressWarnings(Sweave(paste(fname, ".Rnw", sep=""), ...))
-	texi2dvi(paste(fname, ".tex", sep=""), pdf=TRUE)
-}
+##Sweave2pdf <- function(fname, ...){
+##	fname <- strsplit(fname, ".Rnw")[[1]][[1]]
+##	suppressWarnings(Sweave(paste(fname, ".Rnw", sep=""), ...))
+##	texi2dvi(paste(fname, ".tex", sep=""), pdf=TRUE)
+##}
 
 rowMAD <- function(x, y, ...){
 	notna <- !is.na(x)
@@ -962,6 +962,7 @@ xypanel <- function(x, y,
 		    fill.het="salmon",
 		    col.np="grey20",
 		    fill.np="grey60",
+		    show.state=TRUE,
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
 	panel.xyplot(x, y, ...)
@@ -983,8 +984,15 @@ xypanel <- function(x, y,
 				fill=fill.het, ...)
 	}
 	j <- panel.number()
-	lrect(xleft=start(range)[j]/1e6, xright=end(range)[j]/1e6,
+	st <- start(range)[j]/1e6
+	lrect(xleft=st, xright=end(range)[j]/1e6,
 	      ybottom=-10, ytop=10, ...)
+	if(show.state){
+		## left justify the label to the start of the range
+		y.max <- max(y, na.rm=TRUE)
+		ltext(st, y.max, labels=paste("state", state(range)[j]),
+		      adj=c(0,1))
+	}
 }
 
 
