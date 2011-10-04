@@ -872,7 +872,7 @@ icePlatforms <- function(){
 }
 
 
-genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
+genotypeEmissionCrlmm <- function(object, hmm.params, gt.conf, cdfName){
 	stopifnot(is(object, "matrix"))
 	GT <- as.integer(object)
 	##rm(object); gc()
@@ -881,10 +881,10 @@ genotypeEmissionCrlmm <- function(object, hmmOptions, gt.conf, cdfName){
 	} else annotation <- cdfName
 	loader(paste(annotation, "Conf.rda", sep=""), .vanillaIcePkgEnv, "VanillaICE")
 	hapmapP <- getVarInEnv("reference")
-	pHetCalledHom <- hmmOptions[["prHetCalledHom"]]
-	pHetCalledHet <- hmmOptions[["prHetCalledHet"]]
-	pHomInNormal <- hmmOptions[["prHomInNormal"]]
-	pHomInRoh <- hmmOptions[["prHomInRoh"]]
+	pHetCalledHom <- hmm.params[["prHetCalledHom"]]
+	pHetCalledHet <- hmm.params[["prHetCalledHet"]]
+	pHomInNormal <- hmm.params[["prHomInNormal"]]
+	pHomInRoh <- hmm.params[["prHomInRoh"]]
 	if(length(cdfName) < 1) stop("must specify annotation")
 	##data(list=paste(annotation, "Conf", sep=""), package="VanillaICE", envir=environment())
 	if(length(pHomInNormal) == nrow(gt.conf)){  ##convert to vector
