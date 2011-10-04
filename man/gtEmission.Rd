@@ -95,7 +95,6 @@ oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
 ## for a homozygous-deletion than any of the other states
 ##
 hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
-gt.emit <- gtEmission(oligoSet, hmmOpts)
 
 \dontrun{
 ## ICE is TRUE
@@ -110,34 +109,6 @@ fit1 <- hmm(oligoSet, hmmOpts)
 xyplot(cn ~ x | range, data=oligoSet, range=fit1, frame=2e6,
        panel=xypanel, cex=0.5, pch=21, border="orange",
        scales=list(x="free"))
-}
-
-##---------------------------------------------------------------------------
-##
-##  Downstream of CRLMM for genotyping
-##
-##---------------------------------------------------------------------------
-\dontshow{
-\dontrun{
-if(require("crlmm")){
-	data(sample.CNSet, package="crlmm")
-	oligoSet <- as(sample.CNSet, "oligoSnpSet")
-        oligoSet <- order(oligoSet)
-        hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE)
-        gt.emit <- gtEmission(oligoSet, hmmOpts)
-        fit2 <- hmm(oligoSet, hmmOpts)
-        ## use BAFs for emission probs.
-	baf.lrr <- calculateRBaf(sample.CNSet)
-	ad <- assayDataNew(copyNumber=copyNumber(oligoSet),
-			   cnConfidence=cnConfidence(oligoSet),
-			   call=calls(oligoSet),
-			   callProbability=snpCallProbability(oligoSet),
-			   baf=baf.lrr[["baf"]])
-	assayData(oligoSet) <- ad
-	hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
-        fit3 <- hmm(oligoSet, hmmOpts)
-}
-}
 }
 
 }
