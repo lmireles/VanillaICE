@@ -5,7 +5,7 @@
   Calculate emission probabilities for genotypes diallelic genotypes.
 }
 \usage{
-gtEmission(object, hmmOptions, gt.conf, is.snp, cdfName, ...)
+gtEmission(object, hmm.params, gt.conf, is.snp, cdfName, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
@@ -13,7 +13,7 @@ gtEmission(object, hmmOptions, gt.conf, is.snp, cdfName, ...)
     A object of class \code{SnpSet}, \code{oligoSnpSet}, or \code{matrix}.
   }
 
-  \item{hmmOptions}{
+  \item{hmm.params}{
     A \code{HmmOptionList}.
   }
 
@@ -86,8 +86,10 @@ Only chromosomes 1-24 supported (23=X and 24 = Y).
   \code{\link{cnEmission}}, \code{\link{gtEmission-methods}}
 }
 \examples{
+
 data(oligoSetExample, package="oligoClasses")
 oligoSet <- order(oligoSet)
+##oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
 ##
 ## Here, the probability of a missing genotype is 5 times as likely
 ## for a homozygous-deletion than any of the other states
@@ -102,6 +104,39 @@ annotation(oligoSet) %in% icePlatforms()
 ## for illustration
 annotation(oligoSet) <- "genomewidesnp6"
 gt.emit2 <- gtEmission(oligoSet, hmmOpts)
+fit1 <- hmm(oligoSet, hmmOpts)
+xyplot(cn ~ x | range, data=oligoSet, range=fit1, frame=2e6,
+       panel=xypanel, cex=0.5, pch=21, border="orange",
+       scales=list(x="free"))
+
+##---------------------------------------------------------------------------
+##
+##  Downstream of CRLMM for genotyping
+##
+##---------------------------------------------------------------------------
+\dontshow{
+\dontrun{
+if(require("crlmm")){
+	data(sample.CNSet, package="crlmm")
+	oligoSet <- as(sample.CNSet, "oligoSnpSet")
+        oligoSet <- order(oligoSet)
+        hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE)
+        gt.emit <- gtEmission(oligoSet, hmmOpts)
+        fit2 <- hmm(oligoSet, hmmOpts)
+        ## use BAFs for emission probs.
+	baf.lrr <- calculateRBaf(sample.CNSet)
+	ad <- assayDataNew(copyNumber=copyNumber(oligoSet),
+			   cnConfidence=cnConfidence(oligoSet),
+			   call=calls(oligoSet),
+			   callProbability=snpCallProbability(oligoSet),
+			   baf=baf.lrr[["baf"]])
+	assayData(oligoSet) <- ad
+	hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
+        fit3 <- hmm(oligoSet, hmmOpts)
+}
+}
+}
+
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.

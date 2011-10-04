@@ -1,7 +1,12 @@
 setMethod("hmm2", signature(object="SnpSet", hmm.params="HmmOptionList"),
 	  function(object, hmm.params, ...){
-		  log.beta <- gtEmission(object, hmm.params)
-		  dimnames(log.beta) <- list(featureNames(object),
+		  ##log.beta <- gtEmission(object, hmm.params)
+		  if("baf" %in% ls(assayData(object))){
+			  log.beta <- bafEmission(object, hmm.params, ...)
+		  } else {
+			  log.beta <- gtEmission(object, hmm.params, ...)
+		  }
+		  dimnames(log.beta) <- list(NULL,
 					     sampleNames(object),
 					     hmm.params$states)
 		  viterbi(object, hmm.params, log.E=log.beta)
@@ -70,13 +75,23 @@ setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
 	  })
 
 setMethod("gtEmission", signature(object="SnpSet"),
-	  function(object, hmmOptions, ...){
+	  function(object, hmm.params, ...){
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
-		  log.emit <- gtEmission(calls(object), hmmOptions,
+		  log.emit <- gtEmission(calls(object), hmm.params,
 					 is.snp=isSnp(object),
 					 gt.conf=confs(object),
 					 cdfName=annotation(object), ...)
+		  return(log.emit)
+	  })
+
+setMethod("bafEmission", signature(object="SnpSet"),
+	  function(object, hmm.params, ...){
+		  is.ordered <- checkOrder(object)
+		  stopifnot(is.ordered)
+		  log.emit <- bafEmission(baf(object), hmm.params,
+					  is.snp=isSnp(object),
+					  cdfName=annotation(object), ...)
 		  return(log.emit)
 	  })
 
@@ -88,3 +103,6 @@ setMethod("xyplot", signature(x="formula", data="SnpSet"),
 			  callNextMethod()
 		  }
 })
+
+setMethod("baf", signature(object="SnpSet"), function(object) assayDataElement(object, "baf"))
+

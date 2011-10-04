@@ -5,13 +5,18 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 					    cnStates=hmm.params[["copynumberStates"]],
 					    is.log=hmm.params[["is.log"]],
 					    is.snp=isSnp(object), ...)
-		  log.beta.gt <- gtEmission(object, hmm.params, ...)
+		  if("baf" %in% ls(assayData(object))){
+			  log.beta.gt <- bafEmission(object, hmm.params, ...)
+		  } else {
+			  log.beta.gt <- gtEmission(object, hmm.params, ...)
+		  }
 		  ##log.emission <- emit(object, hmm.params)
 		  log.beta <- log.beta.cn+log.beta.gt
-		  dimnames(log.beta) <- list(featureNames(object),
+		  dimnames(log.beta) <- NULL
+		  dimnames(log.beta) <- list(NULL,
 					     sampleNames(object),
 					     hmm.params$states)
-		  viterbi(object, hmm.params, log.E=log.beta)
+		  res <- viterbi(object, hmm.params, log.E=log.beta)
 })
 
 
@@ -161,7 +166,7 @@ setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDat
 
 
 setMethod("cnEmission", signature(object="oligoSnpSet"),
-	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, is.snp, ...){
+	  function(object, stdev, k=5, cnStates, is.log, is.snp, ...){
 		  ##fn <- featureNames(object)
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
