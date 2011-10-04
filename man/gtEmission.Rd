@@ -89,13 +89,15 @@ Only chromosomes 1-24 supported (23=X and 24 = Y).
 
 data(oligoSetExample, package="oligoClasses")
 oligoSet <- order(oligoSet)
-##oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
+oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
 ##
 ## Here, the probability of a missing genotype is 5 times as likely
 ## for a homozygous-deletion than any of the other states
 ##
 hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
 gt.emit <- gtEmission(oligoSet, hmmOpts)
+
+\dontrun{
 ## ICE is TRUE
 hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=TRUE)
 tryCatch(gtEmission(oligoSet, hmmOpts), error=function(e) "Annotation platform not supported. See icePlatforms()")
@@ -108,6 +110,7 @@ fit1 <- hmm(oligoSet, hmmOpts)
 xyplot(cn ~ x | range, data=oligoSet, range=fit1, frame=2e6,
        panel=xypanel, cex=0.5, pch=21, border="orange",
        scales=list(x="free"))
+}
 
 ##---------------------------------------------------------------------------
 ##

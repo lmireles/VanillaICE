@@ -5,7 +5,7 @@
 a Uniform-Gaussian mixture.}
 
 \usage{
-cnEmission(object, stdev, k = 5, cnStates = 0:4, is.log = FALSE, is.snp,
+cnEmission(object, stdev, k = 5, cnStates, is.log, is.snp,
 verbose = TRUE, ...)
 }
 
