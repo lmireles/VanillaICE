@@ -1,19 +1,22 @@
 setMethod("hmm2", signature(object="SnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, ...){
+	  function(object, hmm.params, use.baf=FALSE, ...){
 		  ##log.beta <- gtEmission(object, hmm.params)
-		  if("baf" %in% ls(assayData(object))){
-			  log.beta <- bafEmission(object, hmm.params, ...)
+		  if(use.baf){
+			  if(!"baf" %in% ls(assayData(object))){
+				  stop("use.baf is true, but baf not in assayData.  See calculateRBaf.")
+			  }
+			  log.beta.gt <- bafEmission(object, hmm.params, ...)
 		  } else {
-			  log.beta <- gtEmission(object, hmm.params, ...)
+			  log.beta.gt <- gtEmission(object, hmm.params, ...)
 		  }
-		  dimnames(log.beta) <- list(NULL,
-					     sampleNames(object),
-					     hmm.params$states)
-		  viterbi(object, hmm.params, log.E=log.beta)
+		  dimnames(log.beta.gt) <- list(NULL,
+						sampleNames(object),
+						hmm.params$states)
+		  viterbi(object, hmm.params, log.E=log.beta.gt)
 })
 
 setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, ...){
+	  function(object, hmm.params, use.baf=FALSE, ...){
 		  naindex <- which(is.na(chromosome(object)) | is.na(position(object)))
 		  if(length(naindex) > 0)
 			  object <- object[-naindex, ]
@@ -49,7 +52,7 @@ setMethod("hmm", signature(object="SnpSet", hmm.params="HmmOptionList"),
 				  CHR <- chromosomes[k]
 				  i <- marker.index.list[[k]]
 				  obj <- object[i, jj]
-				  tmp[[k]] <- hmm2(object=obj, hmm.params=hmm.params, ...)
+				  tmp[[k]] <- hmm2(object=obj, hmm.params=hmm.params, use.baf=use.baf, ...)
 			  }
 			  if(length(tmp) > 1){
 				  rdlist <- RangedDataList(tmp)
