@@ -1,5 +1,7 @@
 setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
-	  function(object, stdev, k=5, cnStates, is.log=FALSE, is.snp, ...){
+	  function(object, stdev, k=5, cnStates, is.log, is.snp, ...){
+		  stopifnot(length(cnStates) > 1)
+		  stopifnot(is.numeric(cnStates))
 		  stopifnot(all(dim(object) == dim(stdev)))
 		  if(any(colSums(is.na(object)) == nrow(object))){
 			  stop("Some samples have all missing values. Exclude these samples before continuing.")
