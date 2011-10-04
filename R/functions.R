@@ -832,8 +832,10 @@ validChromosomeIndex <- function(object){
 probabilityOutlier <- function(cn, sigma=c(0.5, 0.2), k=3, verbose=TRUE){
 	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
 	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
-	rmeds <- runmed(cn, k)
-	delta <- cn-rmeds
+	if(length(cn) > k){
+		rmeds <- runmed(cn, k)
+		delta <- cn-rmeds
+	} else delta <- cn-median(cn, na.rm=TRUE)
 	mu <- 0
 	tau <- 0.01
 	epsilon <- 2; counter <- 1
