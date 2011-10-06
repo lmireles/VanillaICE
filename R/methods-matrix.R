@@ -162,31 +162,125 @@ tnorm <- function(x, mean, sd, lower=0, upper=1){
 ##	return(tau)
 ##}
 
+updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
+	##x <- x[is.snp & x > 0 & x < 1]
+	x <- x[is.snp]
+	mu <- c(0, 0.5, 1)
+	L <- length(mu)
+	pi <- rep(1/L, L)
+	gamma <- matrix(NA, length(x), L)
+	den <- matrix(NA, length(x), L)
+	##num <- vector("list", L-1)
+	num <- matrix(NA, length(x), L)
+	epsilon <- 0.01
+	sd.new <- rep(NA,L)
+	sigma <- sigma0
+	for(iter in seq_len(nUpdates)){
+		if(iter > nUpdates) break()
+		den[, 1] <- pi[1]*tnorm(x, mean=mu[1], sigma[1])
+		den[, 2] <- pi[2]*tnorm(x, mean=mu[2], sigma[2])
+		den[, 3] <- pi[3]*tnorm(x, mean=mu[3], sigma[3])
+		D <- rowSums(den, na.rm=TRUE)
+		for(i in seq_len(L)){
+			num <- den[, i] ##pi[i] * dnorm(x, mu[i], sigma)
+			gamma[, i] <- num/D
+		}
+		rs <- rowSums(gamma, na.rm=TRUE)
+		gamma <- gamma/rs
+		##
+		## update the sds
+		##
+		##sigma2 <- rep(NA,L)
+		for(i in seq_len(L)){
+			sd.new[i] <- sqrt(sum(gamma[,i]*(x - mu[i])^2,na.rm=TRUE)/(sum(gamma[,i],na.rm=TRUE)))
+		}
+		##total.gamma <- apply(gamma, 2, sum, na.rm=TRUE)
+		pi.new <- apply(gamma, 2, mean, na.rm=TRUE)
+		pi <- pi.new
+		##dp <- abs(sum(mu - mu.new)) + abs(sum(pi.new-pi))
+		dp <- abs(sum(sigma-sd.new,na.rm=TRUE))
+		sigma <- sd.new
+		if(dp < epsilon) break()
+	}
+	sds <- sigma
+##	is.homozygote <- gamma[, 1] > 0.9 | gamma[, 3] > 0.9
+##	index <- which(!is.homozygote)
+##	if(length(index) > 1000){
+##		x <- x[index]
+##		mu <- c(1/3, 0.5, 2/3)
+##		sigma0 <- rep(sigma[2], 3)
+##		for(iter in seq_len(nUpdates)){
+##			if(iter > nUpdates) break()
+##			den[, 1] <- pi[1]*tnorm(x, mean=mu[1], sigma[1])
+##			den[, 2] <- pi[2]*tnorm(x, mean=mu[2], sigma[2])
+##			den[, 3] <- pi[3]*tnorm(x, mean=mu[3], sigma[3])
+##			D <- rowSums(den, na.rm=TRUE)
+##			for(i in seq_len(L)){
+##				num <- den[, i] ##pi[i] * dnorm(x, mu[i], sigma)
+##				gamma[, i] <- num/D
+##			}
+##			rs <- rowSums(gamma, na.rm=TRUE)
+##			gamma <- gamma/rs
+##			##
+##			## update the sds
+##			##
+##			##sigma2 <- rep(NA,L)
+##			for(i in seq_len(L)){
+##				sd.new[i] <- sqrt(sum(gamma[,i]*(x - mu[i])^2,na.rm=TRUE)/(sum(gamma[,i],na.rm=TRUE)))
+##			}
+##			pi.new <- apply(gamma, 2, mean, na.rm=TRUE)
+##			pi <- pi.new
+##			##dp <- abs(sum(mu - mu.new)) + abs(sum(pi.new-pi))
+##			dp <- abs(sum(sigma-sd.new,na.rm=TRUE))
+##			sigma <- sd.new
+##			if(dp < epsilon) break()
+##		} ##for(iter in seq_len(nUpdates))
+##		sds <- c(sds[1], sigma, sds[3])
+##	} else {## if(length(index) <= 1000)
+##		sds <- c(sds[1], sds[2], sds[2], sds[3])
+##	}
+	return(sds)
+}
+
 setMethod("bafEmission", signature(object="matrix"),
 	  function(object, hmm.params, is.snp, cdfName, ...){
 		  S <- length(hmm.params[["states"]])
 		  emission <- array(NA, dim=c(nrow(object), ncol(object), S))
-		  sd1 <- sd0 <- 0.01
-		  sd.5 <- 0.04
-		  sd.67 <- sd.33 <- 0.04
-		  p.out <- 1e-5
+		  ## mixture of 2 truncated normals and 1 normal.
+		  ##  Assume mu is known, but sigma is not.
+		  sds <- updateSigma(object, is.snp, sigma0=c(0.02, 0.04, 0.02))
+		  sd0 <- sds[1]
+		  sd1 <- sds[3]
+		  sd.5 <- sds[2]
+		  ## one way p.out can help is if the state appears
+		  ## normal except for a few outliers. Here, bigger
+		  ## values for p.out should encourage more 'normal'
+		  ## states'.
+		  ##
+		  ## The downside is that a few hets appearing in a
+		  ## region of homozygosity may be more acceptable,
+		  ## even though we might prefer a bigger penalty.
+		  ##
+		  ## Can we estimate p? ... the genotype confidence
+		  ## scores may be helpful
+		  p.out <- 1e-8
 		  q.out <- p.out
 		  i <- which(is.snp)
 		  object <- object[i, ]
 		  TN0 <- tnorm(object, 0, sd0)
 		  TN1 <- tnorm(object, 1, sd1)
-		  TN.3 <- tnorm(object, 1/3, sd.33)
-		  TN.6 <- tnorm(object, 2/3, sd.67)
+		  TN.3 <- tnorm(object, 1/3, sd.5)
+		  TN.6 <- tnorm(object, 2/3, sd.5)
 		  TN.25 <- tnorm(object, 0.25, sd.5);
 		  TN.5 <- tnorm(object, 0.5, sd.5);
 		  TN.75 <- tnorm(object, 0.75, sd.5)
 		  pr2 <- 0.5*TN0 + 0.5*TN1
 		  beta.hemizygous <- (1-q.out)*(pr2) + p.out
-		  emission[i, , 1] <- p.out + q.out*dunif(object, 0, 1)
-		  emission[i, , 2] <- p.out + q.out*beta.hemizygous
-		  emission[i, , 3] <- p.out + q.out*(1/3*TN0 + 1/3*TN.5 + 1/3*TN1)
-		  emission[i, , 4] <- p.out + q.out*beta.hemizygous
-		  emission[i, , 5] <- p.out + q.out*(1/4*TN0 + 1/4*TN.3 + 1/4*TN.6 + 1/4*TN1)
+		  emission[i, , 1] <- p.out + q.out*dunif(object, 0, 1) ## 0
+		  emission[i, , 2] <- p.out + q.out*beta.hemizygous     ## 1
+		  emission[i, , 3] <- p.out + q.out*(1/3*TN0 + 1/3*TN.5 + 1/3*TN1) ## 2
+		  emission[i, , 4] <- p.out + q.out*beta.hemizygous  ## 2, ROH
+		  emission[i, , 5] <- p.out + q.out*(1/4*TN0 + 1/4*TN.3 + 1/4*TN.6 + 1/4*TN1) ## 3
 		  emission[i, , 6] <- p.out + q.out*(1/5*TN0 + 1/5*tnorm(object, 1/4, sd.5) + 1/5*TN.5 + 1/5*tnorm(object, 0.75, sd.5) + 1/5*TN1)
 		  ## assign 1 as the emission probablily for all nonpolymorphic markers
 		  ## (across all states)
