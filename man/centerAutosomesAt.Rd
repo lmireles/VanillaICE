@@ -28,7 +28,6 @@ R. Scharpf
 \seealso{
   \code{link{sweep}}
 }
-\examples{
-}
+
 \keyword{manip}
 

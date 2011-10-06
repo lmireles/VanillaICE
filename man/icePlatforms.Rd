@@ -1,8 +1,7 @@
 \name{icePlatforms}
 \alias{icePlatforms}
 \title{List platforms for which ICE option is supported.}
-\description{
-}
+\description{ Lists platforms for which ICE option is supported.}
 \usage{
 icePlatforms()
 }

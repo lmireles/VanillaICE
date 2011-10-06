@@ -1,6 +1,8 @@
 \name{xyplot}
 \alias{xyplot}
+\alias{xyplot2}
 \alias{xyplot,formula,SnpSet-method}
+\alias{xyplot2,formula,eSet-method}
 \title{Plot copy number and physical position for a set of genomic intervals.}
 \description{Plot copy number and physical position given by a
   \code{CNSet} object for a set of genomic intervals stored in a
@@ -8,14 +10,18 @@
 }
 \usage{
 xyplot(x, data, ...)
+xyplot2(x, data, range, frame=0L, ...)
 }
 \arguments{
   \item{x}{A \code{formula}.  Currently, the formula must be one of \code{cn~x},
     \code{cn ~ x | id} or \code{cn ~ x | range}.}
-  \item{data}{A \code{CNSet} object.}
+  \item{data}{A \code{CNSet} or \code{SnpSet} object.}
   \item{\dots}{A \code{RangedDataCNV} object must be passed by the name
-    'range'. Additional arguments are passed to functions \code{panel.xyplot},
-    \code{lpoints}, and \code{lrect}. See examples.}
+    'range'. Arguments for \code{xyplot} are passed to
+    \code{xyplot2}. Additional arguments are passed to \code{xypanel} and \code{panel.xyplot}.}
+  \item{range}{A \code{RangedDataCNV} object.}
+  \item{frame}{The genomic distance (basepairs) to the left and right of the start and stop
+    coordinates in the \code{range} object.}
 }
 \details{
 

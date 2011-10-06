@@ -137,7 +137,9 @@ setMethod("sd", signature(x="oligoSnpSet"),
 		  getSds(x, na.rm=TRUE)
 	   })
 
-setMethod("xyplot2", signature(x="formula", data="eSet", range="RangedDataCNV"),
+setMethod("xyplot2", signature(x="formula",
+			       data="eSet",
+			       range="RangedDataCNV"),
 	  function(x, data, range, frame=0L, ...){
 		  ## for now
 		  ##if(nrow(range) > 1) frame <- 0L

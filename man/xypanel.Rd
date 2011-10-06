@@ -48,13 +48,6 @@ fill.np = "grey60", show.state=TRUE, ..., subscripts)
   appear as blue using the default color scheme.
 
 }
-\value{
-%%  ~Describe the value returned
-%%  If it is a LIST, use
-%%  \item{comp1 }{Description of 'comp1'}
-%%  \item{comp2 }{Description of 'comp2'}
-%% ...
-}
 
 \note{
   To make the drawing of the \code{range} object border invisible, one can use border="white".

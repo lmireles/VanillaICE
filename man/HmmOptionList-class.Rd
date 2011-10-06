@@ -38,8 +38,6 @@ Class \code{vectorORfactor}, by class "list", distance 3.
 R. Scharpf
 }
 
-\seealso{
-}
 \examples{
 showClass("HmmOptionList")
 }
