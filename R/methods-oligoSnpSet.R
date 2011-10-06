@@ -140,7 +140,7 @@ setMethod("sd", signature(x="oligoSnpSet"),
 setMethod("xyplot2", signature(x="formula",
 			       data="eSet",
 			       range="RangedDataCNV"),
-	  function(x, data, range, frame=0L, ...){
+	  function(x, data, range, frame=50e3L, ...){
 		  ## for now
 		  ##if(nrow(range) > 1) frame <- 0L
 		  rm <- findOverlaps(range, data, maxgap=frame) ## RangesMatching

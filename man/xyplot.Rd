@@ -2,7 +2,8 @@
 \alias{xyplot}
 \alias{xyplot2}
 \alias{xyplot,formula,SnpSet-method}
-\alias{xyplot2,formula,eSet-method}
+\alias{xyplot2,formula,CNSet,RangedDataCNV-method}
+\alias{xyplot2,formula,eSet,RangedDataCNV-method}
 \title{Plot copy number and physical position for a set of genomic intervals.}
 \description{Plot copy number and physical position given by a
   \code{CNSet} object for a set of genomic intervals stored in a
@@ -10,7 +11,7 @@
 }
 \usage{
 xyplot(x, data, ...)
-xyplot2(x, data, range, frame=0L, ...)
+xyplot2(x, data, range, frame=50e3L, ...)
 }
 \arguments{
   \item{x}{A \code{formula}.  Currently, the formula must be one of \code{cn~x},
