@@ -137,7 +137,7 @@ setMethod("sd", signature(x="oligoSnpSet"),
 		  getSds(x, na.rm=TRUE)
 	   })
 
-setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDataCNV"),
+setMethod("xyplot2", signature(x="formula", data="eSet", range="RangedDataCNV"),
 	  function(x, data, range, frame=0L, ...){
 		  ## for now
 		  ##if(nrow(range) > 1) frame <- 0L
@@ -161,11 +161,18 @@ setMethod("xyplot2", signature(x="formula", data="oligoSnpSet", range="RangedDat
 				  tmp <- tryCatch(df$range <- mm.df$query, error=function(e) NULL)
 			  }
 		  }
-		  xyplot(x, df,
-			 range=range,
-			 gt=df$gt,
-			 is.snp=df$is.snp,
-			 ...)
+		  if("gt" %in% colnames(df)){
+			  xyplot(x, df,
+				 range=range,
+				 gt=df$gt,
+				 is.snp=df$is.snp,
+				 ...)
+		  } else {
+			  xyplot(x, df,
+				 range=range,
+				 is.snp=df$is.snp,
+				 ...)
+		  }
 	  })
 
 

@@ -967,21 +967,29 @@ xypanel <- function(x, y,
 	panel.grid(v=0, h=4, "grey", lty=2)
 	panel.xyplot(x, y, ...)
 	is.snp <- is.snp[subscripts]
-	gt <- gt[subscripts]
-	hets.index <- which(gt == 2)
-	hom.index <- which(gt == 1 | gt == 3)
-	if(all(!c("col", "fill") %in% names(list(...)))){
-		if(any(!is.snp))
-			lpoints(x[!is.snp], y[!is.snp], col=col.np,
-				fill=fill.np, ...)
-		if(length(hom.index) > 0)
-			lpoints(x[hom.index], y[hom.index], col=col.hom,
-				fill=fill.hom, ...)
+	if(!missing(gt)){
+		gt <- gt[subscripts]
+		hets.index <- which(gt == 2)
+		hom.index <- which(gt == 1 | gt == 3)
+		if(all(!c("col", "fill") %in% names(list(...)))){
+			if(any(!is.snp))
+				lpoints(x[!is.snp], y[!is.snp], col=col.np,
+					fill=fill.np, ...)
+			if(length(hom.index) > 0)
+				lpoints(x[hom.index], y[hom.index], col=col.hom,
+					fill=fill.hom, ...)
 
-		if(length(hets.index) > 0)
-			lpoints(x[hets.index], y[hets.index],
-				col=col.het,
-				fill=fill.het, ...)
+			if(length(hets.index) > 0)
+				lpoints(x[hets.index], y[hets.index],
+					col=col.het,
+					fill=fill.het, ...)
+		}
+	} else {
+		lpoints(x[!is.snp], y[!is.snp], col=col.np,
+			fill=fill.np, ...)
+		## use whatever col.hom to color SNPs
+		lpoints(x[is.snp], y[is.snp], col=col.hom,
+			fill=fill.hom, ...)
 	}
 	j <- panel.number()
 	st <- start(range)[j]/1e6
