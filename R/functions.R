@@ -35,60 +35,60 @@ robustSds <- function(x, takeLog=FALSE, ...){
 ##    estimated, shrinking to the noise level of the sample may have
 ##    the effect of giving uncertainty estimates for the marker that
 ##    are much too small
-robustSds2 <- function(x, DF.PRIOR=10, nSamples, takeLog=FALSE, ...){
-	if(!is.matrix(x)) stop("x is not a matrix")
-	if(takeLog) x <- log2(x)
-
-	## the posterior is IG(nu_n/2, nu_n * sigma2_n (theta)/2)
-	## nu_n = nu_0 + n
-	## sigma2_n(theta) = 1/nu_n * [nu_0 * sigma^2_0 + n*s^2_n(theta)],
-	## where s^2_n(theta) = Sum(yi-theta)^2/n
-	##
-	##
-	## 1/sigma^2 ~ G(nu_0/2, nu_0/2 * sigma^2_0)
-	## E(sigma^2) = sigma^2_0 * nu_0/2 /(nu_0/2 -1)
-	##
-	## 1/sigma^2 | ... ~ G(nu_n/2, nu_n * sigma^2_n/2)
-	##
-	## nu_n = nu_0 + n
-	## sigma^2_n = 1/nu_n *[nu_0*sigma^2_0 + (n-1)*s^2 + k_0*n/k_n*(ybar-mu_0)^2]
-	##
-	## prior
-	##
-	## data
-	##
-	## posterior inference
-	sigma2.0 <- apply(x, 2, MAD, na.rm=TRUE)
-	nu0 <- 100
-	nn <- ncol(x)
-	nu.n <- nu0+nn
-	s2 <- rowMAD(x, na.rm=TRUE)
-	k0 <- 1 ## ?
-	kn <- k0+nn
-	ybar <- rowMedian(x, na.rm=TRUE)
-	mu0 <- median(ybar)
-	##
-	## E[1/sigma2_g | ... ] = sigma^2n/2 * nu_n / (nu_n/2 - 1)
-
-
-
-
-	##
-##	sigma.marker <- rowMAD(x, na.rm=TRUE)
-##	sigma.sample <- apply(x, 2, MAD, na.rm=TRUE)
-##	gammahat <- sigma.marker/median(sigma.marker, na.rm=TRUE)
-##	df1 <- nSamples-1
-##	df2 <- length(sds1)-1
-	sds1 <- rowMAD(x, na.rm=TRUE)
-##	sds.marker <- (df1*sds.marker + df2*median(sds.marker,na.rm=TRUE))/(df1+df2)
-	sds1 <- matrix(sds1, nrow(x), ncol(x))
-	sds2 <- apply(x, 2, "mad", constant=2, na.rm=TRUE)
-	df <- ncol(x)
-	sds2 <- matrix(sds2, nrow(x), ncol(x), byrow=TRUE)
-	sds.star <- (sds1 * df + sds2*DF.PRIOR)/(df+DF.PRIOR)
-	dimnames(sds.star) <- dimnames(x)
-	return(sds.star)
-}
+##robustSds2 <- function(x, DF.PRIOR=10, nSamples, takeLog=FALSE, ...){
+##	if(!is.matrix(x)) stop("x is not a matrix")
+##	if(takeLog) x <- log2(x)
+##
+##	## the posterior is IG(nu_n/2, nu_n * sigma2_n (theta)/2)
+##	## nu_n = nu_0 + n
+##	## sigma2_n(theta) = 1/nu_n * [nu_0 * sigma^2_0 + n*s^2_n(theta)],
+##	## where s^2_n(theta) = Sum(yi-theta)^2/n
+##	##
+##	##
+##	## 1/sigma^2 ~ G(nu_0/2, nu_0/2 * sigma^2_0)
+##	## E(sigma^2) = sigma^2_0 * nu_0/2 /(nu_0/2 -1)
+##	##
+##	## 1/sigma^2 | ... ~ G(nu_n/2, nu_n * sigma^2_n/2)
+##	##
+##	## nu_n = nu_0 + n
+##	## sigma^2_n = 1/nu_n *[nu_0*sigma^2_0 + (n-1)*s^2 + k_0*n/k_n*(ybar-mu_0)^2]
+##	##
+##	## prior
+##	##
+##	## data
+##	##
+##	## posterior inference
+##	sigma2.0 <- apply(x, 2, MAD, na.rm=TRUE)
+##	nu0 <- 100
+##	nn <- ncol(x)
+##	nu.n <- nu0+nn
+##	s2 <- rowMAD(x, na.rm=TRUE)
+##	k0 <- 1 ## ?
+##	kn <- k0+nn
+##	ybar <- rowMedian(x, na.rm=TRUE)
+##	mu0 <- median(ybar)
+##	##
+##	## E[1/sigma2_g | ... ] = sigma^2n/2 * nu_n / (nu_n/2 - 1)
+##
+##
+##
+##
+##	##
+####	sigma.marker <- rowMAD(x, na.rm=TRUE)
+####	sigma.sample <- apply(x, 2, MAD, na.rm=TRUE)
+####	gammahat <- sigma.marker/median(sigma.marker, na.rm=TRUE)
+####	df1 <- nSamples-1
+####	df2 <- length(sds1)-1
+##	sds1 <- rowMAD(x, na.rm=TRUE)
+####	sds.marker <- (df1*sds.marker + df2*median(sds.marker,na.rm=TRUE))/(df1+df2)
+##	sds1 <- matrix(sds1, nrow(x), ncol(x))
+##	sds2 <- apply(x, 2, "mad", constant=2, na.rm=TRUE)
+##	df <- ncol(x)
+##	sds2 <- matrix(sds2, nrow(x), ncol(x), byrow=TRUE)
+##	sds.star <- (sds1 * df + sds2*DF.PRIOR)/(df+DF.PRIOR)
+##	dimnames(sds.star) <- dimnames(x)
+##	return(sds.star)
+##}
 
 viterbi.wrapper <- function(log.emission,
 			    log.initial,
