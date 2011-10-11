@@ -67,8 +67,8 @@ chromosome 8 for two samples.  These samples were processed as part of
 a larger batch, which is why estimates from the linear model are
 available.
 
-<<sample.CNSet>>=
-data(sample.CNSet, package="crlmm")
+<<cnSetExample>>=
+data(cnSetExample, package="crlmm")
 @
 
 We begin by ordering the \Robject{CNSet} object by chromosome and
@@ -81,8 +81,8 @@ subsetting.  After coercion, the copy number estimates are saved on
 the log base 2 scale.
 
 <<coerceToOligoSnpSet>>=
-sample.CNSet <- order(sample.CNSet)
-oligoSet <- as(sample.CNSet, "oligoSnpSet")
+cnSetExample <- order(cnSetExample)
+oligoSet <- as(cnSetExample, "oligoSnpSet")
 range(copyNumber(oligoSet), na.rm=TRUE)
 @
 
@@ -91,7 +91,7 @@ copy number duplications, we add estimates of the B allele frequencies
 to the \Robject{oligoSet} object as follows.
 
 <<BAFs>>=
-assayDataElement(oligoSet, "baf") <- calculateRBaf(sample.CNSet)[["baf"]]
+assayDataElement(oligoSet, "baf") <- calculateRBaf(cnSetExample)[["baf"]]
 @
 
 As in the \texttt{VanillaICE} vignette, we generate default parameters
