@@ -125,8 +125,8 @@ Rob Scharpf
 }
 \examples{
   if(require("crlmm")){
-    data(sample.CNSet, package="crlmm")
-    hmm.params <- HmmOptionList(sample.CNSet)
+    data(cnSetExample, package="crlmm")
+    hmm.params <- HmmOptionList(cnSetExample)
     hmm.params
   }
   data(oligoSetExample, package="oligoClasses")

@@ -64,9 +64,9 @@ R. Scharpf
 \examples{
 \dontrun{
 if(require("crlmm")){
-	data(sample.CNSet, package="crlmm")
-        sample.CNSet <- order(sample.CNSet)
-	oligoSet <- as(sample.CNSet, "oligoSnpSet")
+	data(cnSetExample, package="crlmm")
+        cnSetExample <- order(cnSetExample)
+	oligoSet <- as(cnSetExample, "oligoSnpSet")
         ## uses genotype emission probabilities
         hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE)
         fit2 <- hmm(oligoSet, hmmOpts, use.baf=FALSE)

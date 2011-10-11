@@ -99,7 +99,7 @@ R. Scharpf
 	       scales=list(x="free"))
 
    if(require("lattice")){
-        ## now the generic for xyplot is masked.  Must do
+        ## now the generic for xyplot in VanillaICE is masked.  To unmask,
         xyplot <- VanillaICE:::xyplot
    }
 
