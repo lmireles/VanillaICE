@@ -1022,6 +1022,8 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		mu <- unique(mu)
 		L <- length(mu)
 	} else L <- S
+	## fix normal copy number
+	mu[3] <- median(x, na.rm=TRUE)
 	pi <- rep(1/L, L)
 	## fix the sd.  Update the means via em.
 	##gamma <- vector("list", L)
@@ -1047,7 +1049,9 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		## update the means with contraints
 		##
 		mu.new <- rep(NA, length(mu))
-		for(i in seq_len(L)){
+		mu.new[3] <- mu[3]
+		I <- c(1,2, 4, 5)
+		for(i in I){
 			if(sum(gamma[, i],na.rm=TRUE) < 0.0001) {
 				mu.new[i] <- mu[i]
 				next()

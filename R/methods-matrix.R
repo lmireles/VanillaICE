@@ -18,39 +18,40 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 		  if(any(object < MIN.CN, na.rm=TRUE)) object[object < MIN.CN] <- MIN.CN
 		  if(any(object > MAX.CN, na.rm=TRUE)) object[object > MAX.CN] <- MAX.CN
 		  for(j in 1:ncol(object)){
-			  snp.index <- which(is.snp)
+			  ##snp.index <- which(is.snp)
+			  cn <- object[, j]
+			  snp.index <- which(is.snp & !is.na(cn))
+			  cn <- cn[snp.index]
 			  if(length(snp.index) > 0){
-				  cn <- object[snp.index, j, drop=FALSE]
-				  s <- stdev[snp.index, j, drop=FALSE]
+				  ##cn <- object[snp.index, j, drop=FALSE]
+				  s <- stdev[snp.index, j]
 				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s)
-				  I <- which(!is.na(as.numeric(cn)))
-				  if(length(I)==0) next()
+				  ##I <- which(!is.na(as.numeric(cn)))
+				  ##if(length(I)==0) next()
 				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-				  cnvector <- as.numeric(cn)[I]
-				  prOutlier <- as.numeric(probabilityOutlier(cnvector, k=k))
+				  ##cnvector <- as.numeric(cn)##[I]
+				  ##prOutlier <- as.numeric(probabilityOutlier(cnvector, k=k))
+				  prOutlier <- probabilityOutlier(cn, k=k)
 				  for(l in seq_along(cnStates)){
-					  e <- (1-prOutlier) * dnorm(x=cnvector,
-								     mean=mu.snp[l],##cnStates[l],
-								     sd=as.numeric(s)[I]) +
-									       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
-					  emission.cn[snp.index[I], j, l] <- e
+					  e <- (1-prOutlier) * dnorm(x=cn, mean=mu.snp[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
+					  emission.cn[snp.index, j, l] <- e
 				  }
-			  }  ## length(snp.index) > 0
-			  np.index <- which(!is.snp)
-			  if(length(np.index) > 0){
-				  cn <- object[np.index, j, drop=FALSE]
-				  s <- stdev[np.index, j, drop=FALSE]
-				  mu.np <- updateMu(x=cn, mu=cnStates, sigma=s)
-				  I <- which(!is.na(as.numeric(cn)))
-				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-				  cnvector <- as.numeric(cn)[I]
-				  prOutlier <- as.numeric(probabilityOutlier(cnvector, k=k))
-				  for(l in seq_along(cnStates)){
-					  tmp <- (1-prOutlier) * dnorm(x=cnvector,
-								       mean=mu.np[l],##cnStates[l],
-								       sd=as.numeric(s)[I]) +
-									       prOutlier * dunif(cnvector, MIN.CN, MAX.CN)
-					  emission.cn[np.index[I], j, l] <- tmp
+			  }
+		  }
+		  is.np <- !is.snp
+		  if(any(is.np)){
+			  for(j in 1:ncol(object)){
+				  np.index <- which(is.np & !is.na(object)[, j])
+				  if(length(np.index) > 0){
+					  cn <- object[np.index, j]
+					  s <- stdev[np.index, j]
+					  mu.np <- updateMu(x=cn, mu=cnStates, sigma=s)
+					  ##old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
+					  prOutlier <- probabilityOutlier(cn, k=k)
+					  for(l in seq_along(cnStates)){
+						  tmp <- (1-prOutlier) * dnorm(x=cn, mean=mu.np[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
+						  emission.cn[np.index, j, l] <- tmp
+					  }
 				  }
 			  }
 		  }
@@ -264,27 +265,28 @@ setMethod("bafEmission", signature(object="matrix"),
 		  ## Can we estimate p? ... the genotype confidence
 		  ## scores may be helpful
 		  p.out <- 1e-8
-		  q.out <- p.out
+		  q.out <- 1-p.out
 		  i <- which(is.snp)
-		  object <- object[i, ]
-		  TN0 <- tnorm(object, 0, sd0)
-		  TN1 <- tnorm(object, 1, sd1)
-		  TN.3 <- tnorm(object, 1/3, sd.5)
-		  TN.6 <- tnorm(object, 2/3, sd.5)
-		  TN.25 <- tnorm(object, 0.25, sd.5);
-		  TN.5 <- tnorm(object, 0.5, sd.5);
-		  TN.75 <- tnorm(object, 0.75, sd.5)
+		  obj <- object[i, , drop=FALSE]
+		  TN0 <- tnorm(obj, 0, sd0)
+		  TN1 <- tnorm(obj, 1, sd1)
+		  TN.3 <- tnorm(obj, 1/3, sd.5)
+		  TN.6 <- tnorm(obj, 2/3, sd.5)
+		  TN.25 <- tnorm(obj, 0.25, sd.5);
+		  TN.5 <- tnorm(obj, 0.5, sd.5);
+		  TN.75 <- tnorm(obj, 0.75, sd.5)
 		  pr2 <- 0.5*TN0 + 0.5*TN1
-		  beta.hemizygous <- (1-q.out)*(pr2) + p.out
-		  emission[i, , 1] <- p.out + q.out*dunif(object, 0, 1) ## 0
-		  emission[i, , 2] <- p.out + q.out*beta.hemizygous     ## 1
+		  beta.hemizygous <- q.out*pr2 + p.out
+		  emission[i, , 1] <- p.out + q.out*dunif(obj, 0, 1) ## 0
+		  emission[i, , 2] <- beta.hemizygous     ## 1
 		  emission[i, , 3] <- p.out + q.out*(1/3*TN0 + 1/3*TN.5 + 1/3*TN1) ## 2
-		  emission[i, , 4] <- p.out + q.out*beta.hemizygous  ## 2, ROH
+		  emission[i, , 4] <- beta.hemizygous  ## 2, ROH
 		  emission[i, , 5] <- p.out + q.out*(1/4*TN0 + 1/4*TN.3 + 1/4*TN.6 + 1/4*TN1) ## 3
-		  emission[i, , 6] <- p.out + q.out*(1/5*TN0 + 1/5*tnorm(object, 1/4, sd.5) + 1/5*TN.5 + 1/5*tnorm(object, 0.75, sd.5) + 1/5*TN1)
+		  emission[i, , 6] <- p.out + q.out*(1/5*TN0 + 1/5*tnorm(obj, 1/4, sd.5) + 1/5*TN.5 + 1/5*tnorm(obj, 0.75, sd.5) + 1/5*TN1)
 		  ## assign 1 as the emission probablily for all nonpolymorphic markers
 		  ## (across all states)
-		  emission[-i, , ] <- 1
+		  np.index <- which(!is.snp)
+		  emission[np.index, , ] <- 1
 		  logemit <- log(emission)
 		  return(logemit)
 	  })
