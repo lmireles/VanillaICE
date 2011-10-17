@@ -143,12 +143,13 @@ setMethod("xyplot2", signature(x="formula",
 	  function(x, data, range, frame=50e3L, ...){
 		  ## for now
 		  ##if(nrow(range) > 1) frame <- 0L
-		  rm <- findOverlaps(range, data, maxgap=frame) ## RangesMatching
+		  rm <- findOverlaps(range, featureData(data), maxgap=frame) ## RangesMatching
 		  mm <- matchMatrix(rm)
 		  mm.df <- data.frame(mm)
 		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
 		  marker.index <- mm.df$subject
 		  sample.index <- match(sampleNames(range), sampleNames(data))
+		  if(any(is.na(sample.index))) stop("sampleNames in RangedData do not match sampleNames in ", class(data), " object")
 		  sample.index <- unique(sample.index)
 		  data <- data[marker.index, sample.index]
 		  mm.df$subject <- match(mm.df$featureNames, featureNames(data))
