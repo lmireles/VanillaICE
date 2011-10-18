@@ -66,6 +66,12 @@ setMethod("hmm", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 			  if(length(ix) > 0) rd <- rd[, -ix]
 			  rm(rdlist)
 		  } else rd <- res[[1]]
+		  rangedData <- RangedDataHMM(ranges=ranges(rd),
+					      chromosome=rd$chromosome,
+					      sampleId=rd$sampleId,
+					      state=rd$state,
+					      coverage=rd$coverage,
+					      LLR=rd$LLR)
 		  return(rd)
 	  })
 setMethod("sd", signature(x="CopyNumberSet"),
