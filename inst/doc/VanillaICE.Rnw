@@ -241,7 +241,7 @@ To find the names of the 102 markers that are included in
 this genomic interval, one could do the following
 <<findOverlaps>>=
 mm <- matchMatrix(findOverlaps(fit.van, oligoSet))
-featureNames(oligoSet)[mm[,1]==2]
+markersInRange <- featureNames(oligoSet)[mm[,1]==2]
 @
 Multipanel displays can be useful for visualizing the low-level data
 for copy number alterations.  We extend the \Rfunction{xyplot} method
@@ -393,7 +393,7 @@ fit.gt <- hmm(snpSet, hmmOpts)
 \noindent A suggested visualization:
 
 <<fig5, fig=TRUE, width=8, echo=FALSE>>=
-fit.chr1 <- fit.gt[fit.gt$chrom==1, ]
+fit.chr1 <- fit.gt[chromosome(fit.gt)==1, ]
 widths <- width(fit.chr1)
 fit.chr1 <- fit.chr1[order(widths,decreasing=TRUE),]
 gt <- ifelse(snpCall(chr1) == 1 | snpCall(chr1) == 3, 1, 0)
