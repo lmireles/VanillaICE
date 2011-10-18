@@ -13,8 +13,8 @@ importFrom(methods, "@<-", callNextMethod, new, validObject)
 importFrom(stats, update, sd)
 ##importMethodsFrom(IRanges, sd)
 importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
-	   lpoints, panel.number)
-
+	   lpoints, panel.number, current.panel.limits)
+importFrom(grid, grid.newpage, viewport, pushViewport, upViewport, dataViewport)
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
 export(icePlatforms,sd)
