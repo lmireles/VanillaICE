@@ -386,7 +386,7 @@ viterbi <- function(object,
 							  pAA=rep(0, S^2))
 			rD[[a]] <- computeLoglik(viterbiResults,
 						 log.initial=log.initial,
-						 log.emission=log.emission,
+						 log.emission=log.E[I, j, ],
 						 states=states,
 						 normalIndex=normalIndex,
 						 nNotMissing=nNotMissing,
