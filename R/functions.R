@@ -677,7 +677,7 @@ xypanel <- function(x, y,
 	      ybottom=-10, ytop=10, ...)
 	if(show.state){
 		## left justify the label to the start of the range
-		y.max <- max(y, na.rm=TRUE)
+		y.max <- current.panel.limits()$ylim[2]
 		ltext(st, y.max, labels=paste("state", state(range)[j]),
 		      adj=c(0,1))
 	}
@@ -772,7 +772,6 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 }
 
 arrangeSideBySide <- function(object1, object2){
-	require("grid")
 	grid.newpage()
 	lvp <- viewport(x=0,
 			y=0.05,
