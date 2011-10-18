@@ -21,16 +21,11 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 			  ##snp.index <- which(is.snp)
 			  cn <- object[, j]
 			  snp.index <- which(is.snp & !is.na(cn))
-			  cn <- cn[snp.index]
 			  if(length(snp.index) > 0){
-				  ##cn <- object[snp.index, j, drop=FALSE]
+				  cn <- cn[snp.index]
 				  s <- stdev[snp.index, j]
 				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s)
-				  ##I <- which(!is.na(as.numeric(cn)))
-				  ##if(length(I)==0) next()
 				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-				  ##cnvector <- as.numeric(cn)##[I]
-				  ##prOutlier <- as.numeric(probabilityOutlier(cnvector, k=k))
 				  prOutlier <- probabilityOutlier(cn, k=k)
 				  for(l in seq_along(cnStates)){
 					  e <- (1-prOutlier) * dnorm(x=cn, mean=mu.snp[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
