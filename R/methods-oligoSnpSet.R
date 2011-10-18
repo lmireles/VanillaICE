@@ -15,7 +15,7 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  }
 		  ##log.emission <- emit(object, hmm.params)
 		  log.beta <- log.beta.cn+log.beta.gt
-		  dimnames(log.beta) <- NULL
+		  ##dimnames(log.beta) <- NULL
 		  dimnames(log.beta) <- list(NULL,
 					     sampleNames(object),
 					     hmm.params$states)
@@ -65,7 +65,9 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  }
 			  if(length(tmp) > 1){
 				  rdlist <- RangedDataList(tmp)
-				  rd <- stack(rdlist)
+				  rd <- tryCatch(stack(rdlist),
+						 error=function(e) NULL)
+				  if(is.null(rd)) return(tmp)
 				  ix <- match("sample", colnames(rd))
 				  if(length(ix) > 0) rd <- rd[, -ix]
 				  rm(rdlist)
@@ -83,7 +85,13 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 			  if(length(ix) > 0) rd <- rd[, -ix]
 			  rm(rdlist)
 		  } else rd <- res[[1]]
-		  return(rd)
+		  rangedData <- RangedDataHMM(ranges=ranges(rd),
+					      chromosome=rd$chromosome,
+					      sampleId=rd$sampleId,
+					      state=rd$state,
+					      coverage=rd$coverage,
+					      LLR=rd$LLR)
+		  return(rangedData)
 	  })
 
 
@@ -143,18 +151,28 @@ setMethod("xyplot2", signature(x="formula",
 	  function(x, data, range, frame=50e3L, ...){
 		  ## for now
 		  ##if(nrow(range) > 1) frame <- 0L
-		  rm <- findOverlaps(range, featureData(data), maxgap=frame) ## RangesMatching
-		  mm <- matchMatrix(rm)
-		  mm.df <- data.frame(mm)
-		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
-		  marker.index <- mm.df$subject
-		  sample.index <- match(sampleNames(range), sampleNames(data))
-		  if(any(is.na(sample.index))) stop("sampleNames in RangedData do not match sampleNames in ", class(data), " object")
-		  sample.index <- unique(sample.index)
-		  data <- data[marker.index, sample.index]
-		  mm.df$subject <- match(mm.df$featureNames, featureNames(data))
-		  df <- as(data, "data.frame")
-		  ##tmp <- todataframe(data, mm.df)
+		  dfList <- vector("list", nrow(range))
+		  for(i in seq_len(nrow(range))){
+			  rm <- findOverlaps(range[i, ], featureData(data), maxgap=frame) ## RangesMatching
+			  mm <- matchMatrix(rm)
+			  mm.df <- data.frame(mm)
+			  mm.df$featureNames <- featureNames(data)[mm.df$subject]
+			  marker.index <- mm.df$subject
+			  sample.index <- match(sampleNames(range)[i], sampleNames(data))
+			  if(any(is.na(sample.index))) stop("sampleNames in RangedData do not match sampleNames in ", class(data), " object")
+			  sample.index <- unique(sample.index)
+			  data2 <- data[marker.index, sample.index]
+			  mm.df$subject <- match(mm.df$featureNames, featureNames(data2))
+			  df <- as(data2, "data.frame")
+			  df$range <- rep(i, nrow(df))##mm.df$query
+			  dfList[[i]] <- df
+		  }
+		  if(length(dfList) == 1) {
+			  df <- dfList[[1]]
+		  } else{
+			  df <- do.call("rbind", dfList)
+		  }
+		  df$range <- factor(df$range, ordered=TRUE, levels=unique(df$range))
 		  list.x <- as.character(x)
 		  i <- grep("|", list.x, fixed=TRUE)
 		  if(length(i) > 0){
