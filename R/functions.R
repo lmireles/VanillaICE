@@ -172,29 +172,168 @@ getChromosomeArm <- function(object){
 	return(res)
 }
 
+computeLoglikForRange <- function(from, to,
+				  viterbiSequence, normalIndex,
+				  log.initial,
+				  log.emission,
+				  lP.A2N,
+				  lP.N2A,
+				  lP.N2N,
+				  lP.A2A
+				  ){
+	index <- seq(from, to)
+	thisState <- unique(viterbiSequence[index])
+	if(thisState == normalIndex) return(0)
+	first.index <- min(index)
+	last.index <- max(index)
+	T <- length(viterbiSequence)
+	## 6 Rules  (1 < t < T)
+	## 1.  index=1
+	## 2.  index=t
+	## 3.  index=t,t+1
+	## 4.  index=T
+	## 5.  index=1,2
+	## 6,  index=T-1, T
+	##------
+	## 1. index=1
+	if(first.index == last.index & last.index==1){
+		##note the last term cancels
+		logLik.vit <- log.initial[thisState]+log.emission[1, thisState] + lP.A2N[2] + log.emission[2, normalIndex]
+		logLik.null <- log.initial[normalIndex]+log.emission[1, normalIndex] + lP.N2N[2] + log.emission[2, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	##2 index = t
+	if(length(index) == 1 & first.index > 1 & last.index < T){
+		##note the last term cancels
+		logLik.vit <- sum(lP.N2A[index] + log.emission[index, thisState]) + lP.A2N[last.index+1]+log.emission[last.index+1, normalIndex]
+		logLik.null <- sum(lP.N2N[index] + log.emission[index, normalIndex]) + lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	##if T=t+1?
+	## 3: index = t, ..., t*  , t>1, t* < T, t* != t
+	if(first.index != last.index & first.index > 1 & last.index < T){
+		index2 <- index[-1]
+		logLik.vit <- lP.N2A[first.index] +
+			sum(lP.A2A[index2]) +
+				lP.A2N[last.index+1] +
+					log.emission[first.index, thisState] +
+						sum(log.emission[index2, thisState]) +
+							log.emission[last.index+1, normalIndex]
+		logLik.null <-
+			sum(lP.N2N[index]) +
+				lP.N2N[last.index+1]  +
+					sum(log.emission[index, normalIndex]) +
+						log.emission[last.index+1, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	## 4: index = T
+	if(first.index == last.index & last.index == T){
+		logLik.vit <- lP.N2A[T] + log.emission[T, thisState]
+		logLik.null <- lP.N2N[T] + log.emission[T, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	## 5: index = 1, 2, ...
+	if(first.index != last.index & first.index == 1 & last.index < T){
+		index2 <- index[-1]## t=2, ...., t*
+		logLik.vit <- log.initial[thisState] + log.emission[first.index, thisState]  + sum(lP.A2A[index2] + log.emission[index2, thisState]) + lP.A2N[last.index+1] + log.emission[last.index+1, normalIndex]
+		logLik.null <- log.initial[normalIndex] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex]) + lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	if(first.index != last.index & first.index == 1 & last.index == T){
+		index2 <- index[-1]## t=2, ...., t*
+		logLik.vit <- log.initial[thisState] + log.emission[first.index, thisState]  + sum(lP.A2A[index2] + log.emission[index2, thisState]) ##+ lP.A2N[last.index+1] + log.emission[last.index+1, normalIndex]
+		logLik.null <- log.initial[normalIndex] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex]) ##+ lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
+		LLR <- logLik.vit-logLik.null
+		return(LLR)
+	}
+	## 6: index = t, ...T
+	if(first.index != last.index & last.index == T){
+		index2 <- index[-1]
+		logLik.vit <- lP.N2A[first.index] + log.emission[first.index, thisState] + sum(lP.A2A[index2] + log.emission[index2, thisState])
+		logLik.null <- lP.N2N[first.index] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex])
+		LLR <- logLik.vit - logLik.null
+		return(LLR)
+	}
+	stop("none of conditions in likRatio function satisfied")
+}
+
+computeLoglik <- function(viterbiResults,
+			  log.initial,
+			  log.emission=log.emission,
+			  states,
+			  normalIndex,
+			  nNotMissing,
+			  c1, c2, c3,
+			  physical.position,
+			  CHR,
+			  sample.name){
+	viterbiSequence <- viterbiResults[["viterbiSeq"]]
+	S <- length(states)
+	rl <- Rle(viterbiSequence)
+	starts <- start(rl)
+	LLR <- rep(NA,  length(starts))
+	log.emission <- matrix(viterbiResults[["log.emission"]], nNotMissing, S)
+	##** The NA is to stagger the transition probabilities by 1
+	##  -- this way, the same index can be used to multiply the transition and emission probabilities
+	p <- c(NA, as.numeric(viterbiResults[["tau"]]))
+	lP.N2N <- log(1-((1-p)*(S-1)*c1)) ##probability normal -> normal
+	lP.N2A <- log((1-p)*c1) ##probability normal -> altered
+	P.A2A <- sapply(1-((1-p)*(c2+(S-2)*c3)), function(x) max(x, 0.01))
+	lP.A2A <- log(P.A2A) ## probability altered to same altered state
+	lP.A2N <- log((1-p)*c2) ##probability altered -> normal
+	lP.A2Astar <- log((1-p)*c3) ## probability altered -> different altered state
+	##For each seqment, compute the likelihood ratio
+	for(k in seq_along(starts)){
+		LLR[k] <- computeLoglikForRange(from=start(rl)[k],
+						to=end(rl)[k],
+						viterbiSequence=viterbiSequence,
+						normalIndex=normalIndex,
+						log.initial=log.initial,
+						log.emission=log.emission,
+						lP.N2N=lP.N2N,
+						lP.N2A=lP.N2A,
+						lP.A2N=lP.A2N,
+						lP.A2A=lP.A2A)
+	}
+	start.index <- start(rl)
+	end.index <- end(rl)
+	##pos <- position(object)[I]
+	##this is tricky since we've added an index to force a segment for each arm.
+	start <- physical.position[start.index]
+	end <- physical.position[end.index]
+	##numMarkers <- unlist(numMarkers)
+	numMarkers <- width(rl)
+	states <- viterbiSequence[start.index]
+	ir <- IRanges(start=start, end=end)
+	rangedData <- RangedData(ranges=ir,
+				 chromosome=rep(CHR, length(LLR)),
+				 sampleId=rep(sample.name, length(LLR)),
+				 state=states,
+				 coverage=numMarkers,
+				 LLR=LLR)
+	return(rangedData)
+}
+
 viterbi <- function(object,
 		    hmm.params,
 		    log.E, ...){
-		    ##verbose=TRUE,
-		    ##normal2altered=1,
-		    ##altered2normal=1,
-		    ##altered2altered=1,
-		    ##TAUP=1e8, ...){
-	##log.E <- hmm.params[["log.emission"]]
 	sns <- colnames(log.E)
 	if(is.null(sns)) stop("no dimnames for log.emission")
-	##log.initial <- hmm.params[["log.initial"]]
 	log.initial <- hmm.params$log.initialPr
 	verbose <- hmm.params$verbose
 	normal2altered <- hmm.params$n2a
 	altered2normal <- hmm.params$a2n
 	altered2altered <- hmm.params$a2a
-	##
 	if(normal2altered <= 0) stop("normal2altered must be > 0")
 	if(altered2normal <= 0) stop("altered2normal must be > 0")
 	if(altered2altered <= 0) stop("altered2altered must be > 0")
-	##
-	## arm can contain NA's for invalid chromosomes or NA's
+##	##
+##	## arm can contain NA's for invalid chromosomes or NA's
 	arm <- getChromosomeArm(object)
 	normalIndex <- hmm.params$normalIndex##[["normalIndex"]]
 	if(normalIndex < 1 | normalIndex > dim(log.E)[[3]]){
@@ -215,17 +354,18 @@ viterbi <- function(object,
 	names(log.initial) <- states
 	S <- length(states)
 	delta <- matrix(as.double(0), nrow=TT, ncol=S)
-	rangedData <- list()
+	rangedData <- vector("list", ncol(log.E))
 	for(j in 1:ncol(log.E)){
 		rD <- vector("list", length(unique(arm)))
+		missingE <- rowSums(is.na(log.E[, j, ])) > 0
+		notFinite <- rowSums(!is.finite(log.E[, j, ])) > 0
+		missingE <- missingE | notFinite
 		for(a in seq_along(unique(arm))){
-			missingE <- rowSums(is.na(log.E[, j, ])) > 0
-			notFinite <- rowSums(!is.finite(log.E[, j, ])) > 0
-			missingE <- missingE | notFinite
-			I <- arm == a  & !missingE
-			if(sum(I) < 2) next()
-			T <- sum(I)
-			transitionPr <- exp(-2 * diff(position(object)[I])/TAUP)
+			logicalNotMissing <- I <- arm == a  & !missingE
+			if(sum(logicalNotMissing) < 2) next()
+			nNotMissing <- T <- sum(logicalNotMissing)
+			physical.position <- position(object)[logicalNotMissing]
+			transitionPr <- exp(-2 * diff(physical.position)/TAUP)
 			##is the lower bound a function of normal2altered, altered2normal, altered2altered?
 			minimum <- 1-1/((S-1)*c1) + 0.01
 			transitionPr[transitionPr < minimum] <- minimum
@@ -244,158 +384,30 @@ viterbi <- function(object,
 							  altered2altered=altered2altered,
 							  normalIndex=normalIndex,
 							  pAA=rep(0, S^2))
-			M <- matrix(viterbiResults[["pAA"]], S, S)
-			if(!all(is.finite(M))) stop("Infinite values in transition prob. matrix. Check that rows are ordered by physical position")
-			if(!all.equal(rowSums(exp(M)), rep(1, S))){
-				warning("Rows of the transition probability matrix do not sum to 1")
-			}
-			viterbiSequence <- viterbiResults[["viterbiSeq"]]
-			rl <- Rle(viterbiSequence)
-			starts <- start(rl)
-			LLR <- rep(999,  length(starts))
-			log.emission <- matrix(viterbiResults[["log.emission"]], T, S)
-			##** The NA is to stagger the transition probabilities by 1
-			##  -- this way, the same index can be used to multiply the transition and emission probabilities
-			p <- c(NA, as.numeric(viterbiResults[["tau"]]))
-			lP.N2N <- log(1-((1-p)*(S-1)*c1)) ##probability normal -> normal
-			lP.N2A <- log((1-p)*c1) ##probability normal -> altered
-			P.A2A <- sapply(1-((1-p)*(c2+(S-2)*c3)), function(x) max(x, 0.01))
-			lP.A2A <- log(P.A2A) ## probability altered to same altered state
-			lP.A2N <- log((1-p)*c2) ##probability altered -> normal
-			lP.A2Astar <- log((1-p)*c3) ## probability altered -> different altered state
-			##For each seqment, compute the likelihood ratio
-
-			for(k in seq(along=starts)){
-				##if(any(LLR < 0)) browser()
-				index <- start(rl)[k]:end(rl)[k]
-				thisState <- unique(viterbiSequence[index])
-				if(thisState == normalIndex){
-					LLR[k] <- 0
-					next()
-				}
-				first.index <- min(index)
-				last.index <- max(index)
-				## 6 Rules  (1 < t < T)
-				## 1.  index=1
-				## 2.  index=t
-				## 3.  index=t,t+1
-				## 4.  index=T
-				## 5.  index=1,2
-				## 6,  index=T-1, T
-				##------
-				## 1. index=1
-				if(first.index == last.index & last.index==1){
-					##note the last term cancels
-					logLik.vit <- log.initial[thisState]+log.emission[1, thisState] + lP.A2N[2] + log.emission[2, normalIndex]
-					logLik.null <- log.initial[normalIndex]+log.emission[1, normalIndex] + lP.N2N[2] + log.emission[2, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				##2 index = t
-				if(length(index) == 1 & first.index > 1 & last.index < T){
-					##note the last term cancels
-					logLik.vit <- sum(lP.N2A[index] + log.emission[index, thisState]) + lP.A2N[last.index+1]+log.emission[last.index+1, normalIndex]
-					logLik.null <- sum(lP.N2N[index] + log.emission[index, normalIndex]) + lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				##if T=t+1?
-				## 3: index = t, ..., t*  , t>1, t* < T, t* != t
-				if(first.index != last.index & first.index > 1 & last.index < T){
-					index2 <- index[-1]
-					logLik.vit <- lP.N2A[first.index] +
-					              sum(lP.A2A[index2]) +
-					              lP.A2N[last.index+1] +
-						      log.emission[first.index, thisState] +
-						      sum(log.emission[index2, thisState]) +
-					              log.emission[last.index+1, normalIndex]
-					logLik.null <-
-						sum(lP.N2N[index]) +
-						lP.N2N[last.index+1]  +
-						sum(log.emission[index, normalIndex]) +
-						log.emission[last.index+1, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				## 4: index = T
-				if(first.index == last.index & last.index == T){
-					logLik.vit <- lP.N2A[T] + log.emission[T, thisState]
-					logLik.null <- lP.N2N[T] + log.emission[T, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				## 5: index = 1, 2, ...
-				if(first.index != last.index & first.index == 1 & last.index < T){
-					index2 <- index[-1]## t=2, ...., t*
-					logLik.vit <- log.initial[thisState] + log.emission[first.index, thisState]  + sum(lP.A2A[index2] + log.emission[index2, thisState]) + lP.A2N[last.index+1] + log.emission[last.index+1, normalIndex]
-					logLik.null <- log.initial[normalIndex] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex]) + lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				if(first.index != last.index & first.index == 1 & last.index == T){
-					index2 <- index[-1]## t=2, ...., t*
-					logLik.vit <- log.initial[thisState] + log.emission[first.index, thisState]  + sum(lP.A2A[index2] + log.emission[index2, thisState]) ##+ lP.A2N[last.index+1] + log.emission[last.index+1, normalIndex]
-					logLik.null <- log.initial[normalIndex] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex]) ##+ lP.N2N[last.index+1] + log.emission[last.index+1, normalIndex]
-					LLR[k] <- logLik.vit-logLik.null
-					next()
-				}
-				## 6: index = t, ...T
-				if(first.index != last.index & last.index == T){
-					index2 <- index[-1]
-					logLik.vit <- lP.N2A[first.index] + log.emission[first.index, thisState] + sum(lP.A2A[index2] + log.emission[index2, thisState])
-					logLik.null <- lP.N2N[first.index] + log.emission[first.index, normalIndex] + sum(lP.N2N[index2] + log.emission[index2, normalIndex])
-					LLR[k] <- logLik.vit - logLik.null
-				}
-			}
-			start.index <- start(rl)
-			end.index <- end(rl)
-			pos <- position(object)[I]
-			##this is tricky since we've added an index to force a segment for each arm.
-			start <- pos[start.index]
-			end <- pos[end.index]
-			##numMarkers <- unlist(numMarkers)
-			numMarkers <- width(rl)
-			states <- viterbiSequence[start.index]
-			ir <- IRanges(start=start, end=end)
-			rD[[a]] <- RangedData(ir,
-					      ##space=rep(paste("chr", unique(chromosome(object)[I]), sep=""), length(ir)),
-					      chrom=rep(unique(chromosome(object)[I]), length(ir)),
-					      ##sampleId=sampleNames(object)[j],
-					      sampleId=colnames(log.E)[j],
-					      state=states,
-					      numMarkers=numMarkers,
-					      LLR=LLR)
+			rD[[a]] <- computeLoglik(viterbiResults,
+						 log.initial=log.initial,
+						 log.emission=log.emission,
+						 states=states,
+						 normalIndex=normalIndex,
+						 nNotMissing=nNotMissing,
+						 c1=c1, c2=c2, c3=c3,
+						 physical.position=physical.position,
+						 CHR=unique(chromosome(object)[logicalNotMissing]),
+						 sample.name=sns[j])
 		}
 		notnull <- !sapply(rD, is.null)
 		rD <- rD[notnull]
-		L <- sapply(rD, nrow)
-		if(any(L == 1) & any(L > 1)){
-			rangedData[[j]] <- c(do.call(c, rD[L == 1]), do.call(c, rD[L > 1]))
-		} else {
-			rangedData[[j]] <- do.call(c, rD)
+		if(length(rD)==1) {
+			rangedData[[j]] <- rD[[1]]
+		} else{
+			rangedData[[j]] <- stack(RangedDataList(rD))
 		}
 	}
-##	L <- sapply(rangedData, nrow)
-##	if(any(L == 1) & any(L > 1)){
-##		rangedData <- c(do.call(c, rangedData[L == 1]), do.call(c, rangedData[L > 1]))
-##	} else {
-##		rangedData <- do.call(c, rangedData)
-##	}
-	sampleId <- unlist(lapply(rangedData, function(x) x$sampleId))
-	state <- unlist(lapply(rangedData, function(x) x$state))
-	numMarkers <- unlist(lapply(rangedData, function(x) x$numMarkers))
-	LLR <- unlist(lapply(rangedData, function(x) x$LLR))
-	chr <- unlist(lapply(rangedData, function(x) x$chrom))
-	starts <- unlist(lapply(rangedData, start))
-	ends <- unlist(lapply(rangedData, end))
-	ir <- IRanges(start=starts, end=ends)
-	rangedData <- RangedDataHMM(ranges=ir,
-				    chromosome=chr,
-				    sampleId=sampleId,
-				    state=state,
-				    coverage=numMarkers,
-				    LLR=LLR)
-	##rangedData <- as(rangedData, "RangedDataCn")
+	if(length(rangedData) == 1) {
+		rangedData <- rangedData[[1]]
+	} else {
+		rangedData <- stack(RangedDataList(rangedData))
+	}
 	return(rangedData)
 }
 
@@ -404,206 +416,6 @@ viterbi <- function(object,
 
 
 
-##viterbi <- function(emission,
-##		    tau,
-##		    arm,
-##		    initialStateProbs,
-##		    verbose=FALSE,
-##		    chromosome,
-##		    position,
-##		    sampleNames,
-##		    locusNames,
-##		    normalIndex,
-##		    returnLikelihood=FALSE,
-##		    normal2altered=1,
-##		    altered2normal=1,
-##		    altered2altered=1){
-##	if(class(emission) != "array") stop("emission probabilities must be an array: snps, samples, states. ")
-##	if(missing(sampleNames)) sampleNames <- colnames(emission)
-##	if(missing(normalIndex)) stop("Must specify integer for normalIndex")
-##	if(!is.numeric(normalIndex)) stop("normalIndex should be numeric")
-##	viterbiSequence <- matrix(NA, nrow(emission), ncol(emission), dimnames)
-##	S <- dim(emission)[3]
-##	T <- nrow(emission)
-##	if(missing(initialStateProbs)){
-##		initialStateProbs <- log(rep(1/S, S))
-##	}
-##	if(length(initialStateProbs) != S){
-##		stop("initialStateProbs (the initial state probabilities, should be a numeric vector of length S, where S is the number of hidden states")
-##	}
-##	if(!all(initialStateProbs <= 0)){
-##		if(all(initialStateProbs >= 0 & initialStateProbs <= 1)){
-##			initialStateProbs <- log(initialStateProbs)
-##		} else stop("initial state probabilities should be a probability or a log probability")
-##	}
-##	if(any(is.na(emission))){
-##		if(verbose) message("Converting missing values in the emission matrix to 0")
-##		emission[is.na(emission)] <- 0
-##	}
-##	if(any(is.nan(emission))){
-##		message("some of the log emission probabilities are NaN.  Replacing with 0")
-##		emission[is.nan(emission)] <- 0
-##	}
-##	if(any(emission < -50)){
-##		message("some of the log emission probabilities are very small -- probable outliers.  Replacing with a small value (-10)")
-##		emission[emission < -50] <- -50
-##	}
-##	if(missing(arm)){
-##		message("chromosome arm not specified...HMM is not fit separately to each chromosomal arm")
-##		arm <- rep(as.integer(1), T)
-##	}
-##	if(length(arm) != T) {
-##		message("arm not the right length.  assuming all values on same chromosomal arm")
-##		arm <- rep(as.integer(1), T)
-##	}
-##	if(missing(tau)){
-##		stop("transition probabilities not specified")
-##	}
-##	if(length(tau) != T) stop("tau must have length T")
-##	## The last index is arbitrary and, by default, is NA. Must replace this by a number-- C can not handle NA's
-##	tau[is.na(tau)] <- 0
-##	delta <- matrix(as.double(0), nrow=T, ncol=S)
-##	browser()
-##	rangedData <- list()
-##	for(j in 1:ncol(results)){
-##		rD <- vector("list", length(unique(arm)))
-##		for(a in seq(along=unique(arm))){
-##			I <- arm == a
-##			T <- sum(I)
-##			result <- rep(as.integer(0), T)
-##			tmp <- list(as.matrix(as.double(as.matrix(emission[I, j, ]))),##beta
-##				    as.double(as.matrix(initialStateProbs)),##initialP
-##				    as.matrix(as.double(tau[I])),##tau
-##				    as.integer(arm[I]),##arm
-##				    as.integer(S),##number of states
-##				    as.integer(T),##number of loci
-##				    result,##placeholder for results
-##				    as.matrix(as.double(delta[I, ])),##delta
-##				    normal2altered=normal2altered,##c1
-##				    altered2normal=altered2normal,##c2
-##				    altered2altered=altered2altered,##c3
-##				    as.integer(normalIndex),
-##				    as.double(rep(0, S^2)))##normalIndex
-##			tmp2 <- .C("viterbi",
-##				   emission=tmp[[1]],
-##				   initialStateProbs=tmp[[2]],
-##				   tau=tmp[[3]],
-##				   arm=tmp[[4]],
-##				   S=tmp[[5]],
-##				   T=tmp[[6]],
-##				   viterbiSeq=tmp[[7]],
-##				   delta=tmp[[8]],
-##				   N2A=tmp[[9]],
-##				   A2N=tmp[[10]],
-##				   A2A=tmp[[11]],
-##				   normalIndex=tmp[[12]],
-##				   pAA=tmp[[13]])  ##can verify that the transition prob. matrix is correct (for last snp)
-##			##check transition probs.
-##			M <- matrix(tmp2[["pAA"]], S, S)
-##			if(!all(is.finite(M))) stop("Infinite values in transition prob. matrix")
-##			if(!all.equal(rowSums(exp(M)), rep(1, S))){
-##				warning("Rows of the transition probability matrix do not sum to 1")
-##			}
-##			viterbiSequence <- tmp2[["viterbiSeq"]]
-##			logInitialP <- initialStateProbs
-##			rl <- Rle(viterbiSequence)
-##			starts <- start(rl)
-##			LLR <- rep(NA,  length(starts))
-##			logE <- matrix(tmp2[["emission"]], T, S)
-##			p <- as.numeric(tmp2[["tau"]])
-##			c1 <- normal2altered
-##			c2 <- altered2normal
-##			c3 <- altered2altered
-##			lP.N2N <- log(1-((1-p)*(S-1)*c1)) ##probability normal -> normal
-##			lP.N2A <- log((1-p)*c1) ##probability normal -> altered
-##			lP.A2A <- log(1-((1-p)*(c2+(S-2)*c3))) ## probability altered to same altered state
-##			lP.A2N <- log((1-p)*c2) ##probability altered -> normal
-##			lP.A2Astar <- log((1-p)*c3) ## probability altered -> different altered state
-##			##For each seqment, compute the likelihood ratio
-##			for(k in seq(along=starts)){
-##				index <- start(rl)[k]:end(rl)[k]
-##				thisState <- unique(viterbiSequence[index])
-##				first.index <- min(index)
-##				last.index <- max(index)
-##				if(last.index < T){
-##					next.index <- last.index+1
-##					next.state <- viterbiSequence[next.index]
-##					lE.next.state <- logE[next.index, next.state]
-##					tp.last <- lP.A2N[last.index] ##not next.index!
-##				} else{ ##max(index) = T
-##					lE.next.state <- NULL
-##					tp.last <- NULL
-##				}
-##				if(min(index) > 1){
-##					tps <- c(lP.N2A[min(index)-1], lP.A2A[index[-length(index)]], tp.last)
-##					tps.normal <- lP.N2N[c(index-1, max(index))]
-##				} else {
-##					tps <- c(logInitialP[thisState], lP.A2A[index[-length(index)]], tp.last)
-##					tps.normal <- c(logInitialP[normalIndex],
-##							lP.N2N[index[-length(index)]])
-##				}
-##				lEs <- c(logE[index, thisState], lE.next.state)
-##				lE.normal <- c(logE[index, normalIndex], lE.next.state)
-##				loglik.Vit <- sum(lEs+tps)
-##				loglik.null <- sum(lE.normal+tps.normal)
-##				LLR[k] <- loglik.Vit-loglik.null
-##			}
-##			start.index <- start(rl)
-##			end.index <- end(rl)
-##			pos <- position[I]
-##			##this is tricky since we've added an index to force a segment for each arm.
-##			start <- pos[start.index]
-##			end <- pos[end.index]
-##			##numMarkers <- unlist(numMarkers)
-##			numMarkers <- width(rl)
-##			states <- viterbiSequence[start.index]
-##			ir <- IRanges(start=start, end=end)
-##			rD[[a]] <- RangedData(ir,
-##					      space=rep(paste("chr", unique(chromosome[I]), sep=""), length(ir)),
-##					      sampleId=sampleNames[j],
-##					      state=states,
-##					      numMarkers=numMarkers,
-##					      LLR=LLR)
-##		}
-##		tmp <- do.call(c, rD[sapply(rD, nrow) == 1])
-##		tmp2 <- do.call(c, rD[sapply(rD, nrow) > 1])
-##		rD <- c(tmp, tmp2)
-##		rangedData[[j]] <- rD
-##		##results <- list(stateSequence=results, logLikelihoodRatio=lrdiff)
-##	}
-##	rangedData <- do.call(c, rangedData)
-##	return(rangedData)
-##}
-trioOptions <- function(opts,
-			states=c("BPI", "notBPI"),
-			##initialP=c(0.99, 0.01),
-			##TAUP=1e7,
-			prGtError=c(0.001, 0.01),
-			##verbose=FALSE,
-			allowHetParent=FALSE,
-			##normalIndex=1,
-			##normal2altered=1,
-			##altered2normal=1,
-			useCrlmmConfidence=FALSE){
-	names(prGtError) <- states
-	opts[["states"]] <- states
-	opts$prGtError <- prGtError
-	opts$allowHetParent <- allowHetParent
-	##useCrlmmConfidence=useCrlmmConfidence)
-	return(opts)
-}
-
-##setMethod("coerce", c("CNSet", "list"), function(from, to){
-##	if(ncol(object) < 3){
-##		return("No complete trios")
-##	}
-##	stopifnot(all(c("familyId", "fatherId", "motherId", "individualId") %in% varLabels(object)))
-##
-##	for(i in 1:nrow(trios)){
-##
-##
-##	}
-##})
 centerAutosomesAt <- function(x, at, ...){
 	stopifnot(!missing(at))
 	marker.index <- which(chromosome(x) <= 23)
@@ -622,55 +434,6 @@ hmm.setup <- function(object, ...){  ## whether the save the emission probabilit
 	return(res)
 }
 
-##Code this in C
-viterbiR <- function(emission, initialP, tau, arm){
-##	emission: log emission probabilities
-##	initialP: log initial state probabilities (vector of length S)
-##	tau: transition probabilities (original scale)
-##	tau.scale: matrix on original scale
-	S <- ncol(emission)
-	T <- nrow(emission)  ##matrix of T rows and S columns
-	delta <- psi <- matrix(NA, T, S)
-	delta[1, ] <- initialP + emission[1, ]
-	psi[1, ] <- rep(0, S)
-	i <- which(rowSums(is.na(emission)) > 0)
-	tau.scale <- 1
-	#emission[i, ] <- 0
-	for(t in 2:T){
-		if(t %% 10000 == 0) cat(".")
-		if(arm[t] != arm[t-1]){
-			delta[t, ] <- initialP + emission[t, ]
-			psi[t, ] <- 0
-			next()
-		}
-##		AA <- matrix(NA, nr=S, nc=S)
-##		for(i in 1:S){
-		AA <- matrix(tau[t-1], nr=S, nc=S)
-		epsilon <- (1-tau[t-1])/(S-1)
-		##eNormal <- (1-tauNormal[t-1])/(S-1)
-		AA[upper.tri(AA)] <- AA[lower.tri(AA)] <- epsilon
-		##AA[normalIndex, ] <- rep(eNormal, S)
-		##AA[normalIndex, normalIndex] <- tauNormal[t-1]
-		AA <- log(AA*tau.scale)
-		for(j in 1:S){
-			tmp <- delta[t-1, ] + AA[, j]
-			delta[t, j] <- max(tmp) + emission[t, j]
-			psi[t, j] <- order(tmp, decreasing=TRUE)[1]
-		}
-	}
-	Pstar <- max(delta[nrow(delta), ])
-	qhat <- rep(NA, nrow(delta))
-	qhat[T] <- order(delta[T, ], decreasing=TRUE)[1]
-	for(t in (T-1):1){
-		if(arm[t] != arm[t+1]){
-			qhat[t] <- order(delta[t, ], decreasing=TRUE)[1]
-		} else {
-			qhat[t] <- psi[t+1, qhat[t+1]]
-		}
-	}
-	return(qhat)
-}
-
 
 setMethod("update", "environment", function(object, ...){
 	if(length(ls(object)) == 0) stop("nothing to update")
@@ -687,89 +450,6 @@ setMethod("update", "environment", function(object, ...){
 	    envir=object)
 })
 
-findFatherMother <- function(offspringId, object){
-	stopifnot(!missing(offspringId))
-	family.id <- pData(object)[sampleNames(object) == offspringId, "familyId"]
-	father.id <- pData(object)[sampleNames(object) == offspringId, "fatherId"]
-	mother.id <- pData(object)[sampleNames(object) == offspringId, "motherId"]
-	father.name <- sampleNames(object)[object$familyId == family.id & object$individualId == father.id]
-	mother.name <- sampleNames(object)[object$familyId == family.id & object$individualId == mother.id]
-	if(length(father.name) > 1 | length(mother.name) > 1){
-		stop("More than 1 father and/or more than 1 mother.  Check annotation in phenoData")
-	}
-	if(length(father.name) < 1 ){
-		father.name <- NA
-	}
-	if(length(mother.name) < 1){
-		mother.name <- NA
-	}
-	fmo.trio <- c(father.name, mother.name, offspringId)
-	names(fmo.trio) <- c("father", "mother", "offspring")
-	return(fmo.trio)
-}
-
-
-##plot <- function(df, palette, xlim, show.coverage=TRUE, blackBorder=TRUE, sampleLabels.cex=0.5, labelAllSamples=TRUE,...){
-##	stopifnot(length(unique(df$chr))==1)
-##	mykey <- simpleKey(c("homo-del", "hemi-del", "amp")[palette %in% df$col], points=FALSE,
-##		   rectangles=TRUE, col=palette[palette %in% df$col], space="top")
-##	mykey$rectangles[["border"]] <- mykey$rectangles[["col"]] <- palette[palette %in% df$col]
-##	##df$method=factor(df$method, order=TRUE)
-##	if(blackBorder) border <- rep("black", nrow(df)) else border <- df$col
-##	if(labelAllSamples) {
-##		labels <- df$id
-##		ticks.at <- df$y
-##	} else {
-##		labels <- FALSE
-##		ticks.at <- pretty(df$y)
-##	}
-##	fig <- xyplot(y~midpoint|method, data=df,
-##			    panel=function(x, y, x0, x1, chr.size,
-##			    col, border, coverage, chr, show.coverage=TRUE, max.y,
-##			    ..., subscripts){
-##				    panel.grid(h=-1, v=10)
-##				    ##yy <- factor(y, order=TRUE)
-##				    panel.xyplot(x, y, ..., subscripts)
-##				    ##yyy <- as.integer(yy)
-##				    h <- 0.75
-##				    lrect(xleft=x0[subscripts],
-##					  xright=x1[subscripts],
-##					  ybottom=y-h/2,
-##					  ytop=y+h/2,
-##					  border=border[subscripts],
-##					  col=col[subscripts], ...)
-##				    if(show.coverage)
-##					    ltext(x, y,labels=coverage[subscripts], cex=0.6)
-##				    ## plot centromere
-##				    chr <- unique(as.integer(as.character(df$chr)))
-##				    coords <- chromosomeAnnotation[chr, 1:2]/1e6
-##				    lrect(xleft=coords[1],
-##					  xright=coords[2],
-##					  ybottom=0,
-##					  ytop=max.y+h/2,
-##					  col="grey",
-##					  border="grey")
-##			    },
-##		      x0=df$x0,
-##		      x1=df$x1,
-##		      col=df$col,
-##		      border=border,
-##		      alpha=1,
-##		      chr.size=df$chr.size,
-##		      scales=list(y=list(labels=labels, at=ticks.at, cex=sampleLabels.cex)),
-##		      coverage=df$coverage,
-##		      xlab="Mb",
-##		      ylab="offspring index",
-##		      show.coverage=show.coverage,
-##		      key=mykey,
-##		      par.strip.text=list(lines=0.7, cex=0.6),
-##		      prepanel=prepanel.fxn,
-##		      xlim=xlim,
-##		      max.y=max(df$y), ...)
-####		      axis=function(side, text.cex){
-####			      panel.axis(side, text.cex=text.cex)}, ...)
-##	return(fig)
-##}
 
 invalidCnConfidence <- function(x){
 	is.na(x) | x <= 0 | is.nan(x) | is.infinite(x)
@@ -1089,4 +769,31 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		mu <- tmp
 	}
 	return(mu)
+}
+
+arrangeSideBySide <- function(object1, object2){
+	require("grid")
+	grid.newpage()
+	lvp <- viewport(x=0,
+			y=0.05,
+			width=unit(0.50, "npc"),
+			height=unit(0.95, "npc"), just=c("left", "bottom"),
+			name="lvp")
+	pushViewport(lvp)
+	nfigs1 <- length(object1$x.limit)
+	nfigs2 <- length(object2$x.limit)
+	stopifnot(length(nfigs1) == length(nfigs2))
+	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
+	object1$layout <- c(1, nfigs1)
+	print(object1, newpage=FALSE, prefix="plot1", more=TRUE)
+	upViewport(0)
+	lvp2 <- viewport(x=0.5,
+			 y=0.05,
+			 width=unit(0.50, "npc"),
+			 height=unit(0.95, "npc"), just=c("left", "bottom"),
+			 name="lvp2")
+	pushViewport(lvp2)
+	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
+	object2$layout <- c(1, nfigs1)
+	print(object2, newpage=FALSE, prefix="plot2", more=TRUE)
 }
