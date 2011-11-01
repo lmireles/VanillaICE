@@ -645,7 +645,7 @@ xypanel <- function(x, y,
 		    show.state=TRUE,
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
-	panel.xyplot(x, y, ...)
+	panel.xyplot(x[1], y[1], cex=0) ## set it up, but don't plot
 	is.snp <- is.snp[subscripts]
 	if(!missing(gt)){
 		gt <- gt[subscripts]
@@ -686,7 +686,7 @@ xypanel <- function(x, y,
 
 ##
 ## AD-HOC
-updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
+updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	if(nUpdates==0) return(mu)
 	## assume CN is a vector.  Fit EM independently for each
 	## sample
@@ -703,7 +703,7 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		L <- length(mu)
 	} else L <- S
 	## fix normal copy number
-	mu[3] <- median(x, na.rm=TRUE)
+	mu[normalIndex] <- median(x, na.rm=TRUE)
 	pi <- rep(1/L, L)
 	## fix the sd.  Update the means via em.
 	##gamma <- vector("list", L)
@@ -729,8 +729,10 @@ updateMu <- function(x, mu, sigma, is.snp, nUpdates=10){
 		## update the means with contraints
 		##
 		mu.new <- rep(NA, length(mu))
-		mu.new[3] <- mu[3]
-		I <- c(1,2, 4, 5)
+		##mu.new[3] <- mu[3]
+		mu.new[normalIndex] <- mu[normalIndex]
+		##I <- c(1,2, 4, 5)
+		I <- seq_along(mu)[-normalIndex]
 		for(i in I){
 			if(sum(gamma[, i],na.rm=TRUE) < 0.0001) {
 				mu.new[i] <- mu[i]

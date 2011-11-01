@@ -9,7 +9,7 @@ setGeneric("hmm2", function(object, hmm.params, use.baf=FALSE, ...) standardGene
 ##setGeneric("scaleSds", function(object) standardGeneric("scaleSds"))
 ##setGeneric("emit", function(object, hmm.params) standardGeneric("emit"))
 setGeneric("cnEmission", function(object, stdev, k=5, cnStates,
-				  is.log, is.snp, verbose=TRUE, ...) standardGeneric("cnEmission"))
+				  is.log, is.snp, normalIndex, verbose=TRUE, ...) standardGeneric("cnEmission"))
 setGeneric("gtEmission", function(object, hmm.params, gt.conf, is.snp, cdfName, ...) standardGeneric("gtEmission"))
 setGeneric("bafEmission", function(object, hmm.params, is.snp, cdfName, ...) standardGeneric("bafEmission"))
 

@@ -1,5 +1,5 @@
 setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
-	  function(object, stdev, k=5, cnStates, is.log, is.snp, ...){
+	  function(object, stdev, k=5, cnStates, is.log, is.snp, normalIndex, ...){
 		  stopifnot(length(cnStates) > 1)
 		  stopifnot(is.numeric(cnStates))
 		  stopifnot(all(dim(object) == dim(stdev)))
@@ -24,7 +24,7 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 			  if(length(snp.index) > 0){
 				  cn <- cn[snp.index]
 				  s <- stdev[snp.index, j]
-				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s)
+				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
 				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
 				  prOutlier <- probabilityOutlier(cn, k=k)
 				  for(l in seq_along(cnStates)){

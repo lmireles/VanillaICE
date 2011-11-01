@@ -4,8 +4,10 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  log.beta.cn <- cnEmission(object,
 					    cnStates=hmm.params[["copynumberStates"]],
 					    is.log=hmm.params[["is.log"]],
-					    is.snp=isSnp(object), ...)
+					    is.snp=isSnp(object),
+					    normalIndex=hmm.params[["normalIndex"]],...)
 		  if(use.baf){
+
 			  if(!"baf" %in% ls(assayData(object))){
 				  stop("use.baf is true, but baf not in assayData.  See calculateRBaf.")
 			  }
@@ -173,6 +175,11 @@ setMethod("xyplot2", signature(x="formula",
 			  df <- do.call("rbind", dfList)
 		  }
 		  df$range <- factor(df$range, ordered=TRUE, levels=unique(df$range))
+		  df$id <- factor(df$id, ordered=TRUE, levels=unique(df$id))
+		  if("return.data.frame" %in% names(list(...))){
+			  return.df <- list(...)[["return.data.frame"]]
+			  if(return.df) return(df)
+		  }
 		  list.x <- as.character(x)
 		  i <- grep("|", list.x, fixed=TRUE)
 		  if(length(i) > 0){
@@ -185,11 +192,13 @@ setMethod("xyplot2", signature(x="formula",
 		  if("gt" %in% colnames(df)){
 			  xyplot(x, df,
 				 range=range,
+				 id=df$id,
 				 gt=df$gt,
 				 is.snp=df$is.snp,
 				 ...)
 		  } else {
 			  xyplot(x, df,
+				 id=df$id,
 				 range=range,
 				 is.snp=df$is.snp,
 				 ...)
@@ -198,7 +207,7 @@ setMethod("xyplot2", signature(x="formula",
 
 
 setMethod("cnEmission", signature(object="oligoSnpSet"),
-	  function(object, stdev, k=5, cnStates, is.log, is.snp, ...){
+	  function(object, stdev, k=5, cnStates, is.log, is.snp, normalIndex, ...){
 		  ##fn <- featureNames(object)
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
@@ -206,7 +215,8 @@ setMethod("cnEmission", signature(object="oligoSnpSet"),
 		  sds <- sd(object)
 		  emit <- cnEmission(object=CN, stdev=sds,
 				     k=k, cnStates=cnStates,
-				     is.log=is.log, is.snp=is.snp, ...)
+				     is.log=is.log, is.snp=is.snp,
+				     normalIndex=normalIndex, ...)
 		  return(emit)
 	  })
 

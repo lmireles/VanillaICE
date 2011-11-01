@@ -4,6 +4,7 @@ setMethod("hmm2", signature(object="CopyNumberSet", hmm.params="HmmOptionList"),
 		  log.beta <- cnEmission(object, hmm.params,
 					 cnStates=hmm.params[["copynumberStates"]],
 					 is.log=hmm.params[["is.log"]],
+					 normalIndex=hmm.params[["normalIndex"]],
 					 verbose=verbose, ...)
 		  dimnames(log.beta) <- list(featureNames(object),
 					     sampleNames(object),
@@ -81,7 +82,7 @@ setMethod("sd", signature(x="CopyNumberSet"),
 
 
 setMethod("cnEmission", signature(object="CopyNumberSet"),
-	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, ...){
+	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, normalIndex, ...){
 		  ##fn <- featureNames(object)
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
@@ -90,7 +91,8 @@ setMethod("cnEmission", signature(object="CopyNumberSet"),
 		  emit <- cnEmission(object=CN, stdev=sds,
 				     k=k, cnStates=cnStates,
 				     is.log=is.log,
-				     is.snp=isSnp(object), ...)
+				     is.snp=isSnp(object),
+				     normalIndex=normalIndex,...)
 		  return(emit)
 	  })
 
