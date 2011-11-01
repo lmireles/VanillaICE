@@ -40,7 +40,7 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 				  if(length(np.index) > 0){
 					  cn <- object[np.index, j]
 					  s <- stdev[np.index, j]
-					  mu.np <- updateMu(x=cn, mu=cnStates, sigma=s)
+					  mu.np <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
 					  ##old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
 					  prOutlier <- probabilityOutlier(cn, k=k)
 					  for(l in seq_along(cnStates)){

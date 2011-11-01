@@ -5,8 +5,7 @@
 a Uniform-Gaussian mixture.}
 
 \usage{
-cnEmission(object, stdev, k = 5, cnStates, is.log, is.snp,
-verbose = TRUE, ...)
+cnEmission(object, stdev, k = 5, cnStates, is.log, is.snp, normalIndex, verbose = TRUE, ...)
 }
 
 \arguments{
@@ -21,7 +20,8 @@ verbose = TRUE, ...)
   \item{is.log}{Logical.  TRUE if the copy number estimates in
     \code{object} are on the log scale.}
   \item{is.snp}{Logical vector indicating which markers are polymorphic
-  (TRUE) and nonpolymorphic (FALSE)}
+    (TRUE) and nonpolymorphic (FALSE)}
+  \item{normalIndex}{Integer. The index of the 'normal' copy number state}
   \item{verbose}{Logical.}
   \item{\dots}{Ignored}
 }
@@ -78,7 +78,8 @@ oligoSet <- order(oligoSet)
 cn.emit <- cnEmission(oligoSet, k=5,
 		      cnStates=log2(c(0.1, 1, 2, 3, 4)),
 		      is.log=TRUE,
-                      is.snp=isSnp(oligoSet))
+                      is.snp=isSnp(oligoSet),
+		      normalIndex=3)
 }
 % Add one or more standard keywords, see file 'KEYWORDS' in the
 % R documentation directory.
