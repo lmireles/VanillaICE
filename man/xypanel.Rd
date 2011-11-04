@@ -5,7 +5,7 @@
 \usage{
 xypanel(x, y, gt, is.snp, range, col.hom = "grey20", fill.hom =
 "lightblue", col.het = "grey20", fill.het = "salmon", col.np = "grey20",
-fill.np = "grey60", show.state=TRUE, ..., subscripts)
+fill.np = "grey60", show.state=TRUE, cex.state=1,  col.state="blue",..., subscripts)
 }
 \arguments{
   \item{x}{Physical position in megabases.}
@@ -33,6 +33,10 @@ fill.np = "grey60", show.state=TRUE, ..., subscripts)
   }
   \item{show.state}{Logical.  Whether to display the predicted state in
     each panel.}
+  \item{cex.state}{Numeric.  cex for state label.  Ignored if
+    \code{show.state} is \code{FALSE}.}
+  \item{col.state}{Character. color for state label. Ignored if
+    \code{show.state} is \code{FALSE}.}
   \item{\dots}{
     Additional arguments passed to lattice functions \code{xyplot},
     \code{lpoints}, and \code{lrect}.

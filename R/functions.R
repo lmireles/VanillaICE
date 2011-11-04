@@ -643,6 +643,8 @@ xypanel <- function(x, y,
 		    col.np="grey20",
 		    fill.np="grey60",
 		    show.state=TRUE,
+		    cex.state=1,
+		    col.state="blue",
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
 	panel.xyplot(x[1], y[1], cex=0) ## set it up, but don't plot
@@ -679,7 +681,7 @@ xypanel <- function(x, y,
 		## left justify the label to the start of the range
 		y.max <- current.panel.limits()$ylim[2]
 		ltext(st, y.max, labels=paste("state", state(range)[j]),
-		      adj=c(0,1))
+		      adj=c(0,1), cex=cex.state, col=col.state)
 	}
 }
 
@@ -781,8 +783,8 @@ arrangeSideBySide <- function(object1, object2){
 			height=unit(0.95, "npc"), just=c("left", "bottom"),
 			name="lvp")
 	pushViewport(lvp)
-	nfigs1 <- length(object1$x.limit)
-	nfigs2 <- length(object2$x.limit)
+	nfigs1 <- length(object1$condlevels[[1]])
+	nfigs2 <- length(object2$condlevels[[1]])
 	stopifnot(length(nfigs1) == length(nfigs2))
 	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
 	object1$layout <- c(1, nfigs1)
