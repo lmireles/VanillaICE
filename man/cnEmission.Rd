@@ -74,7 +74,7 @@ R. Scharpf
 }
 \examples{
 data(oligoSetExample, package="oligoClasses")
-oligoSet <- order(oligoSet)
+oligoSet <- chromosomePositionOrder(oligoSet)
 cn.emit <- cnEmission(oligoSet, k=5,
 		      cnStates=log2(c(0.1, 1, 2, 3, 4)),
 		      is.log=TRUE,

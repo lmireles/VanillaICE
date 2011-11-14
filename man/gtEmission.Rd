@@ -88,7 +88,7 @@ Only chromosomes 1-24 supported (23=X and 24 = Y).
 \examples{
 
 data(oligoSetExample, package="oligoClasses")
-oligoSet <- order(oligoSet)
+oligoSet <- chromosomePositionOrder(oligoSet)
 oligoSet <- oligoSet[chromosome(oligoSet) == 1, ]
 ##
 ## Here, the probability of a missing genotype is 5 times as likely

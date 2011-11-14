@@ -175,7 +175,7 @@ and physical position.  The \Rfunction{hmm} method will order the
 not required.
 
 <<logscale>>=
-oligoSet <- order(oligoSet)
+oligoSet <- chromosomePositionOrder(oligoSet)
 hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 @
 

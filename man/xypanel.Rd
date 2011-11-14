@@ -69,7 +69,7 @@ R. Scharpf
 \dontrun{
 if(require("crlmm")){
 	data(cnSetExample, package="crlmm")
-        cnSetExample <- order(cnSetExample)
+        cnSetExample <- chromosomePositionOrder(cnSetExample)
 	oligoSet <- as(cnSetExample, "oligoSnpSet")
         ## uses genotype emission probabilities
         hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE)

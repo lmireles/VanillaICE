@@ -38,7 +38,7 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 					  oligoSet <- as(cnset.batch, "oligoSnpSet")
 					  is.ordered <- checkOrder(oligoSet)
 					  if(!is.ordered)
-						  oligoSet <- order(oligoSet)
+						  oligoSet <- chromosomePositionOrder(oligoSet)
 					  rm(cnset.batch)
 					  ##oligoSet <- centerAutosomesAt(oligoSet, at=2)
 					  ##hmmOpts <- HmmOptionList(object=oligoSet, verbose=0L)
@@ -52,7 +52,7 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 				  oligoSet <- as(cnset.batch, "oligoSnpSet")
 				  is.ordered <- checkOrder(oligoSet)
 				  if(!is.ordered)
-					  oligoSet <- order(oligoSet)
+					  oligoSet <- chromosomePositionOrder(oligoSet)
 				  rm(cnset.batch)
 				  hmm.params$verbose <- 0L
 				  results[[m]] <- hmm(oligoSet, hmm.params, k=k)

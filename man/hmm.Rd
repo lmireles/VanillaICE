@@ -89,7 +89,7 @@ oligoSet <- new("oligoSnpSet",
 		callProbability=locusLevelData[["crlmmConfidence"]],
 		annotation=locusLevelData[["platform"]])
 oligoSet <- oligoSet[!is.na(chromosome(oligoSet)), ]
-oligoSet <- oligoSet[order(chromosome(oligoSet), position(oligoSet)),]
+oligoSet <- chromosomePositionOrder(oligoSet)
 oligoSet <- oligoSet[chromosome(oligoSet) < 3, ]
 hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 fit <- hmm(oligoSet, hmmOpts, k=3)
@@ -115,7 +115,7 @@ chromosome(fit)
 \dontrun{
 if(require("crlmm")){
 	data(cnSetExample, package="crlmm")
-        cnSetExample <- order(cnSetExample)
+        cnSetExample <- chromosomePositionOrder(cnSetExample)
 	oligoSet <- as(cnSetExample, "oligoSnpSet")
         assayDataElement(oligoSet, "baf") <- calculateRBaf(cnSetExample)[["baf"]]
         ## uses genotype emission probabilities
