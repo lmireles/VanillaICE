@@ -1,7 +1,13 @@
-setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
-	  function(object, stdev, k=5, cnStates, is.log, is.snp, normalIndex, ...){
+setMethod("cnEmission", signature(object="matrix"),
+	  function(object, stdev, k=5, cnStates, is.log, is.snp,
+		   normalIndex, ...){
 		  stopifnot(length(cnStates) > 1)
 		  stopifnot(is.numeric(cnStates))
+		  if(missing(stdev)){
+			  ## use robust estimate of sample sd
+			  s <- apply(object, 2, mad, na.rm=TRUE)
+			  stdev <- matrix(s, nrow(object), ncol(object), byrow=TRUE)
+		  }
 		  stopifnot(all(dim(object) == dim(stdev)))
 		  if(any(colSums(is.na(object)) == nrow(object))){
 			  stop("Some samples have all missing values. Exclude these samples before continuing.")
@@ -15,8 +21,8 @@ setMethod("cnEmission", signature(object="matrix", stdev="matrix"),
 			  MIN.CN <- 0
 			  MAX.CN <- 10
 		  }
-		  if(any(object < MIN.CN, na.rm=TRUE)) object[object < MIN.CN] <- MIN.CN
-		  if(any(object > MAX.CN, na.rm=TRUE)) object[object > MAX.CN] <- MAX.CN
+		  object <- pmin(object, MAX.CN)
+		  object <- pmax(object, MIN.CN)
 		  for(j in 1:ncol(object)){
 			  ##snp.index <- which(is.snp)
 			  cn <- object[, j]
