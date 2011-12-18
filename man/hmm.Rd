@@ -93,8 +93,9 @@ oligoSet <- chromosomePositionOrder(oligoSet)
 oligoSet <- oligoSet[chromosome(oligoSet) < 3, ]
 hmmOpts <- hmm.setup(oligoSet, is.log=TRUE)
 fit <- hmm(oligoSet, hmmOpts, k=3)
-xyplot(cn~x, oligoSet, range=fit[4, ], frame=2e6,pch=21, cex=0.5, panel=xypanel)
-
+\dontrun{
+xyplot(cn~x, oligoSet, range=fit[4, ], frame=2e6,pch=21, cex=0.5,panel=xypanel)
+}
 ## Useful accessors for RangedData
 ranges(fit)
 
@@ -103,49 +104,8 @@ ranges(fit)
 fit$LLR
 ## the number of SNPs / nonpolymorphic loci in each segment
 coverage2(fit)
-
 sampleNames(fit)
 chromosome(fit)
-
-##---------------------------------------------------------------------------
-##
-##  Downstream of CRLMM for genotyping
-##
-##---------------------------------------------------------------------------
-\dontrun{
-if(require("crlmm")){
-	data(cnSetExample, package="crlmm")
-        cnSetExample <- chromosomePositionOrder(cnSetExample)
-	oligoSet <- as(cnSetExample, "oligoSnpSet")
-        assayDataElement(oligoSet, "baf") <- calculateRBaf(cnSetExample)[["baf"]]
-        ## uses genotype emission probabilities
-        hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE, ICE=FALSE)
-        fit2 <- hmm(oligoSet, hmmOpts, use.baf=FALSE)
-        xyplot(cn ~ x | range, data=oligoSet, range=fit2[1:10, ], frame=2e6,
-               panel=xypanel, cex=0.3, pch=21, border="blue",
-               scales=list(x="free"),
-               col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
-        xyplot(baf ~ x | range, data=oligoSet, range=fit2[1:10, ], frame=2e6,
-               panel=xypanel, cex=0.3, pch=21, border="blue",
-               scales=list(x="free"),
-               col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
-	hmmOpts <- HmmOptionList(oligoSet, is.log=TRUE)
-
-        ## use BAFs for emission probs.
-        fit3 <- hmm(oligoSet, hmmOpts, use.baf=TRUE)
-        ## plot the copy number for the first 10 ranges
-        xyplot(cn ~ x | range, data=oligoSet, range=fit3[1:10, ], frame=2e6,
-               panel=xypanel, cex=0.2, pch=21, border="blue",
-               scales=list(x="free"),
-               col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
-        ## plot the BAFs for the first 10 ranges
-        xyplot(baf ~ x | range, data=oligoSet, range=fit3[1:10, ], frame=2e6,
-               panel=xypanel, cex=0.2, pch=21, border="orange",
-               scales=list(x="free"),
-               col.hom="lightblue", col.het="salmon", col.np="grey60", fill.np="grey60")
-} ## if(require("crlmm"))
-} ## \dontrun
-
 }
 
 \author{R. Scharpf}

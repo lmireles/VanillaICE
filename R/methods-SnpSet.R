@@ -95,12 +95,15 @@ setMethod("gtEmission", signature(object="SnpSet"),
 	  })
 
 setMethod("bafEmission", signature(object="SnpSet"),
-	  function(object, hmm.params, ...){
+	  function(object, is.snp, cdfName,
+		   prOutlier=1e-3, p.hom=0.95, ...){
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
-		  log.emit <- bafEmission(baf(object), hmm.params,
+		  log.emit <- bafEmission(baf(object),
 					  is.snp=isSnp(object),
-					  cdfName=annotation(object), ...)
+					  cdfName=annotation(object),
+					  prOutlier=prOutlier,
+					  p.hom=p.hom, ...)
 		  return(log.emit)
 	  })
 

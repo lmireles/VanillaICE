@@ -82,17 +82,21 @@ setMethod("sd", signature(x="CopyNumberSet"),
 
 
 setMethod("cnEmission", signature(object="CopyNumberSet"),
-	  function(object, stdev, k=5, cnStates=0:4, is.log=FALSE, normalIndex, ...){
+	  function(object, stdev, k=5, cnStates, is.log, is.snp, normalIndex,
+		   verbose=TRUE, ...){
 		  ##fn <- featureNames(object)
 		  is.ordered <- checkOrder(object)
 		  stopifnot(is.ordered)
 		  CN <- copyNumber(object)
 		  sds <- sd(object)
-		  emit <- cnEmission(object=CN, stdev=sds,
-				     k=k, cnStates=cnStates,
+		  emit <- cnEmission(object=CN,
+				     stdev=sds,
+				     k=k,
+				     cnStates=cnStates,
 				     is.log=is.log,
 				     is.snp=isSnp(object),
-				     normalIndex=normalIndex,...)
+				     normalIndex=normalIndex,
+				     verbose=verbose, ...)
 		  return(emit)
 	  })
 

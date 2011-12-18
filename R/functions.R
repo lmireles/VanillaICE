@@ -98,9 +98,9 @@ viterbi.wrapper <- function(log.emission,
 			    T,
 			    result,
 			    delta,
-			    normal2altered,
-			    altered2normal,
-			    altered2altered,
+			    normal2altered=1,
+			    altered2normal=1,
+			    altered2altered=1,
 			    normalIndex,
 			    pAA){
 	tmp <- list(as.matrix(as.double(as.matrix(log.emission))),##beta
@@ -116,7 +116,7 @@ viterbi.wrapper <- function(log.emission,
 		    altered2altered=altered2altered,##c3
 		    as.integer(normalIndex),
 		    as.double(pAA))##normalState
-	.C("viterbi",
+	res <- .C("viterbi",
 	   log.emission=tmp[[1]],
 	   log.initial=tmp[[2]],
 	   tau=tmp[[3]],
@@ -132,15 +132,13 @@ viterbi.wrapper <- function(log.emission,
 	   pAA=tmp[[13]])  ##can verify that the transition prob. matrix is correct (for last snp)
 }
 
-getChromosomeArm <- function(object){
-	chrom <- chromosome(object)
-	pos <- position(object)
+.getArm <- function(chrom, pos){
 	if(!is.integer(chrom)) {
 		chrom <- chromosome2integer(chrom)
 	}
 	if(!all(chrom %in% 1:24)){
 			warning("Chromosome annotation is currently available for chromosomes 1-22, X and Y. Other chromosomes or NA's present.")
-			marker.index <- which(chromosome(object) <= 24 & !is.na(chromosome(object)))
+			marker.index <- which(chrom <= 24 & !is.na(chrom))
 			##message("Please add/modify data(chromosomeAnnotation, package='SNPchip') to accomodate special chromosomes")
 			##stop()
 	} else{
@@ -167,8 +165,15 @@ getChromosomeArm <- function(object){
 	chrom <- chrom[marker.index]
 	chromosomeArm <- cumsum(c(0, diff(chromosomeArm) != 0 | diff(chrom) != 0))
 	chromosomeArm <- chromosomeArm+1 ##start at 1
-	res <- rep(NA, nrow(object))
+	res <- rep(NA, length(chrom))
 	res[marker.index] <- chromosomeArm
+	return(res)
+}
+
+getChromosomeArm <- function(object){
+	chrom <- chromosome(object)
+	pos <- position(object)
+	res <- .getArm(chrom, pos)
 	return(res)
 }
 
@@ -348,6 +353,7 @@ viterbi <- function(object,
 	arm <- arm[index]
 	TT <- length(index)
 	log.E <- log.E[index, , , drop=FALSE]
+	##all.equal(log.E[1:10, 1, ], LE[1:10, 1, ])
 	object <- object[index, ]
 	##
 	states <- hmm.params$states
@@ -368,7 +374,7 @@ viterbi <- function(object,
 			transitionPr <- exp(-2 * diff(physical.position)/TAUP)
 			##is the lower bound a function of normal2altered, altered2normal, altered2altered?
 			minimum <- 1-1/((S-1)*c1) + 0.01
-			transitionPr[transitionPr < minimum] <- minimum
+			transitionPr <- pmax(transitionPr, minimum)
 			if(any(transitionPr < 0 | transitionPr > 1)) stop("Transition probabilities not in [0,1].  Order object by chromosome and physical position")
 			result <- rep(as.integer(0), T)
 			viterbiResults <- viterbi.wrapper(log.emission=log.E[I, j, ],
@@ -411,9 +417,65 @@ viterbi <- function(object,
 	return(rangedData)
 }
 
+stackRangedData <- function(object){
+	if(is(object, "list")){
+		if(length(object)==1){
+			object <- object[[1]]
+		} else {
+			object <- RangedDataList(object)
+			object <- stack(object)
+			ix <- match("sample", colnames(object))
+			if(length(ix) > 0) object <- object[, -ix]
+		}
+	}
+	rangedData <- RangedDataHMM(ranges=ranges(object),
+				    chromosome=object$chromosome,
+				    sampleId=object$sampleId,
+				    state=object$state,
+				    coverage=object$coverage,
+				    LLR=object$LLR)
+	return(rangedData)
+}
 
+rbaf <- function(genotypes, sigma, epsilon, states){
+	baf <- matrix(NA, nrow(genotypes), ncol(genotypes))
+	Ns <- table(genotypes)
+	a <- pnorm(0, mean=0, sd=sigma)
+	b <- pnorm(1, mean=0, sd=sigma)
+	I <- runif(Ns[1], 0, 1) > epsilon
+	baf[genotypes==1] <- I*qnorm(a+runif(Ns[1], 0, b-a), mean=0, sd=sigma) + (1-I)*runif(Ns[1], 0, 1)
+	I <- runif(Ns[2], 0, 1) > epsilon
+	baf[genotypes==2] <- I*rnorm(Ns[2], mean=0.5, sd=sigma*2) + (1-I)*runif(Ns[2], 0, 1)
+	a <- pnorm(0, mean=1, sd=sigma)
+	b <- pnorm(1, mean=1, sd=sigma)
+	I <- runif(Ns[3], 0, 1) > epsilon
+	baf[genotypes==3] <- I*qnorm(a+runif(Ns[3], 0, b-a), mean=1, sd=sigma) + (1-I) * runif(Ns[3], 0, 1)
 
+	## assume 1/2 are hets to make it easy
+	ndup <- sum(states==5)
+	ndup.het <- ceiling(ndup/2)
+	ndup.hom <- ndup-ndup.het
 
+	index5 <- which(states==5)
+	index25 <- sample(index5, ceiling(ndup.het/2))
+	index5 <- setdiff(index5, index25)
+
+	index75 <- setdiff(index5, floor(ndup.het/2))
+	indexhom <- setdiff(index5, index75)
+
+	n25 <- length(index25)
+	n75 <- length(index75)
+	nhom <- length(index5)
+	I <- runif(n25, 0, 1) > epsilon
+	baf[index25] <- I*rnorm(n25, mean=1/3, sd=sigma*2) + (1-I)*runif(n25, 0, 1)
+	I <- runif(n75, 0, 1) > epsilon
+	baf[index75] <- I*rnorm(n75, mean=2/3, sd=sigma*2) + (1-I)*runif(n75, 0, 1)
+	a <- pnorm(0, mean=1, sd=sigma)
+	b <- pnorm(1, mean=1, sd=sigma)
+	baf[indexhom] <- qnorm(a+runif(Ns[3], 0, b-a), mean=1, sd=sigma)
+	rownames(baf) <- rownames(genotypes)
+	return(baf)
+}
 
 
 centerAutosomesAt <- function(x, at, ...){
@@ -461,25 +523,27 @@ invalidGtConfidence <- function(x){
 
 getSds <- function(object, na.rm=TRUE){
 	cn.conf <- cnConfidence(object)
-	stopifnot(all(chromosome(object) <= 24))
+	chrom <- chromosome(object)
+	stopifnot(all(chrom <= 24))
 	notvalid <- invalidCnConfidence(cn.conf)
 	CN <- copyNumber(object)
 	if(any(notvalid)){
+		sds <- .getSds(CN, chrom)
 		##if(verbose) message("cnConfidence missing.  Using MAD")
-		marker.index <- which(chromosome(object) < 23)
-		if(length(marker.index) == 0){
-			sds <- matrix(NA, nrow(cn.conf), ncol(cn.conf))
-			## sex chromosomes
-			marker.index.list <- split(seq_len(nrow(object)), chromosome(object))
-			for(i in seq_along(marker.index.list)){
-				marker.index <- marker.index.list[[1]]
-				tmp <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
-				sds[marker.index, ] <- matrix(tmp, length(marker.index), ncol(CN), byrow=TRUE)
-			}
-		}  else {  ## autosomes present
-			s <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
-			sds <- matrix(s, nrow(CN), ncol(CN), byrow=TRUE)
-		}
+##		marker.index <- which(chrom < 23)
+##		if(length(marker.index) == 0){
+##			sds <- matrix(NA, nrow(cn.conf), ncol(cn.conf))
+##			## sex chromosomes
+##			marker.index.list <- split(seq_len(nrow(CN)), chrom)
+##			for(i in seq_along(marker.index.list)){
+##				marker.index <- marker.index.list[[1]]
+##				tmp <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
+##				sds[marker.index, ] <- matrix(tmp, length(marker.index), ncol(CN), byrow=TRUE)
+##			}
+##		}  else {  ## autosomes present
+##			s <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
+##			sds <- matrix(s, nrow(CN), ncol(CN), byrow=TRUE)
+##		}
 		valid <- !notvalid
 		if(any(valid)){
 			sds[valid] <- 1/cn.conf[valid]
@@ -491,6 +555,33 @@ getSds <- function(object, na.rm=TRUE){
 	stopifnot(any(!notvalid))
 	return(sds)
 }
+
+.getSds <- function(CN, chrom){
+	nr <- nrow(CN)
+	nc <- ncol(CN)
+	if(!missing(chrom)){
+		marker.index <- which(chrom < 23)
+		if(length(marker.index) > 0){
+			CN <- CN[marker.index, , drop=FALSE]
+			s <- apply(CN, 2, mad, na.rm=TRUE)
+			sds <- matrix(s, nrow(CN), ncol(CN), byrow=TRUE)
+		} else {
+			sds <- matrix(NA, nr, nc)
+			## sex chromosomes
+			marker.index.list <- split(seq_len(nrow(CN)), chrom)
+			for(i in seq_along(marker.index.list)){
+				marker.index <- marker.index.list[[1]]
+				tmp <- apply(CN[marker.index, , drop=FALSE], 2, mad, na.rm=TRUE)
+				sds[marker.index, ] <- matrix(tmp, length(marker.index), ncol(CN), byrow=TRUE)
+			}
+		}
+	} else {
+		s <- apply(CN, 2, mad, na.rm=TRUE)
+		sds <- matrix(s, nr, nc, byrow=TRUE)
+	}
+	return(sds)
+}
+
 
 validChromosomeIndex <- function(object){
 	index <- which(chromosome(object) <= 24 & !is.na(chromosome(object)) & !is.na(position(object)))
@@ -799,4 +890,122 @@ arrangeSideBySide <- function(object1, object2){
 	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
 	object2$layout <- c(1, nfigs1)
 	print(object2, newpage=FALSE, prefix="plot2", more=TRUE)
+}
+
+getTau <- function(TAUP, pos, S){
+	taus <- exp(-2*diff(pos)/TAUP)
+	tau.min <- 1-1/((S-1)) + 0.01
+	taus <- pmax(taus, tau.min)
+}
+
+
+
+
+
+viterbi3 <- function(arm, pos, chrom, LE, log.initial,
+		     states, TAUP=1e8, normalIndex=3, id){
+	stopifnot(is(LE, "matrix"))
+	S <- length(states)
+	na.LE <- is.na(LE)
+	if(any(na.LE)){
+		missingE <- rowSums(na.LE) > 0
+		notFinite <- rowSums(!is.finite(LE[, ])) > 0
+		missingE <- missingE | notFinite
+		I <- !missingE
+		pos <- pos[I]
+		arm <- arm[I]
+		LE <- LE[I, ]
+	}
+	T <- nrow(LE)
+	qhat <- rep(0L, T)
+	delta <- matrix(as.double(0), nrow=T, ncol=S)
+	taus <- getTau(TAUP, pos, S)
+	viterbiResults <- VanillaICE:::viterbi.wrapper(log.emission=LE,
+						       log.initial=log.initial,
+						       transitionPr=taus,
+						       arm=arm,
+						       S=S,
+						       T=T,
+						       result=qhat,
+						       delta=delta,
+						       normal2altered=1,
+						       altered2normal=1,
+						       altered2altered=1,
+						       normalIndex=normalIndex,
+						       pAA=rep(0, S^2))
+	rd <- VanillaICE:::computeLoglik(viterbiResults,
+			    log.initial=log.initial,
+			    log.emission=LE,
+			    states=states,
+			    normalIndex=normalIndex,
+			    nNotMissing=nrow(LE),
+			    c1=1, c2=1, c3=1,
+			    physical.position=pos,
+			    CHR=unique(chrom),
+			    sample.name=id)
+	return(rd)
+}
+
+## copied from MinimumDistance
+read.bsfiles <- function(path="./", filenames, ext="", row.names=1,
+			 sep="\t",
+			 as.is=TRUE, header=TRUE,
+			 drop=FALSE, ...){
+	fnames <- file.path(path, paste(filenames, ext, sep=""))
+	stopifnot(all(file.exists(fnames)))
+	for(i in seq_along(filenames)){
+		cat(".")
+		tmp <- read.table(file.path(path, paste(filenames[i], ext, sep="")),
+				  row.names=row.names,
+				  sep=sep,
+				  header=header,
+				  as.is=as.is, ...)
+		if(i==1){
+			j <- grep("Log.R.Ratio", colnames(tmp))
+			k <- grep("B.Allele", colnames(tmp))
+			dat <- array(NA, dim=c(nrow(tmp), 2, length(filenames)))
+			if(!drop){
+				dimnames(dat) <- list(rownames(tmp),
+						      c("lrr", "baf"),
+						      basename(filenames))
+			}
+			##lrr.data <- matrix(NA, nrow(tmp), length(filenames))
+			##baf.data <- matrix(NA, nrow(tmp), length(filenames))
+		}
+		dat[, 1, i] <- tmp[, j]
+		dat[, 2, i] <- tmp[, k]
+	}
+	cat("\n")
+	return(dat)
+}
+
+artificialData <- function(states, nmarkers){
+	state.path <- rep(states, nmarkers)
+	copynumber <- rep(2, length(state.path))
+	copynumber[state.path==2] <- 1.5##bias
+	copynumber[state.path==5] <- 2.5##bias
+	genotypes <- rep(NA, length(copynumber))
+	gt <- rmultinom(n=length(copynumber), size=1, prob=rep(1/3,3))
+	genotypes[gt[1, ] == 1] <- 1L
+	genotypes[gt[2, ] == 1] <- 2L
+	genotypes[gt[3, ] == 1] <- 3L
+	genotypes[state.path==4 | state.path==2] <- 1L
+	## make signal fairly obvious
+	sigmas <- rgamma(length(copynumber), 4, scale=0.05)
+	b <- rbaf(as.matrix(genotypes), sigma=0.01, epsilon=0.001, states=state.path)
+	dat <- rnorm(length(state.path), mean=copynumber, sd=sigmas)
+	pos <- seq(1, by=3e3, length.out=length(copynumber))
+	oligoSet <- new("oligoSnpSet",
+			copyNumber=as.matrix(dat),
+			call=as.matrix(genotypes))
+	assayDataElement(oligoSet, "baf") <- b
+	fData(oligoSet)$position <- pos
+	fData(oligoSet)$chromosome <- 1L
+	fData(oligoSet)$isSnp <- 1L
+	return(oligoSet)
+}
+
+mask <- function(query, subject){
+	index <- matchMatrix(findOverlaps(query, subject))[, 1]
+	query <- query[-index, ]
 }
