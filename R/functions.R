@@ -167,6 +167,7 @@ viterbi.wrapper <- function(log.emission,
 	chromosomeArm <- chromosomeArm+1 ##start at 1
 	res <- rep(NA, length(chrom))
 	res[marker.index] <- chromosomeArm
+	res <- as.integer(res)
 	return(res)
 }
 
@@ -427,6 +428,7 @@ stackRangedData <- function(object){
 			ix <- match("sample", colnames(object))
 			if(length(ix) > 0) object <- object[, -ix]
 		}
+		if(is(object, "RangedDataHMM")) return(object)
 	}
 	rangedData <- RangedDataHMM(ranges=ranges(object),
 				    chromosome=object$chromosome,
@@ -435,6 +437,11 @@ stackRangedData <- function(object){
 				    coverage=object$coverage,
 				    LLR=object$LLR)
 	return(rangedData)
+}
+
+stackRangedDataHMM <- function(object){
+
+
 }
 
 rbaf <- function(genotypes, sigma, epsilon, states){
@@ -594,24 +601,24 @@ validChromosomeIndex <- function(object){
 	return(index)
 }
 
-
-
-
-
-
-
-probabilityOutlier <- function(cn, sigma=c(0.5, 0.2), k=3, verbose=TRUE){
+probabilityOutlier <- function(cn, k=3, sigmas, verbose=TRUE){
 	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
 	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
 	if(length(cn) > k){
 		rmeds <- runmed(cn, k)
 		delta <- cn-rmeds
-	} else delta <- cn-median(cn, na.rm=TRUE)
+	} else delta <- as.numeric(cn-median(cn, na.rm=TRUE))
+	if(missing(sigmas)) {
+		sd.delta <- mad(delta, na.rm=TRUE)
+		sigmas <- c(sd.delta*3, sd.delta)  ## set variance for outlier component to be 3 times the normal component
+	}
 	mu <- 0
 	tau <- 0.01
 	epsilon <- 2; counter <- 1
 	while(epsilon > 0.01){
-		gamma <- (tau * dnorm(delta, mu, sigma[1]))/ (tau * dnorm(delta, mu, sigma[1]) + (1-tau)*dnorm(delta, mu, sigma[2]))
+		## two component Gaussian mixture
+		## sigma[1] is the variance for the outlier component
+		gamma <- (tau * dnorm(delta, mu, sigmas[1]))/ (tau * dnorm(delta, mu, sigmas[1]) + (1-tau)*dnorm(delta, mu, sigmas[2]))
 		## gamma near 1 is likely an outlier
 		## gamma near 0 is likely not an outlier
 		tau.next <- mean(gamma)
@@ -946,24 +953,56 @@ viterbi3 <- function(arm, pos, chrom, LE, log.initial,
 	return(rd)
 }
 
+getColClasses <- function(filename, lrr.colname, baf.colname){
+	tmp <- read.table(filename,
+			  row.names=NULL,
+			  header=TRUE,
+			  stringsAsFactors=FALSE,
+			  sep="\t", nrows=50)
+	j <- grep(lrr.colname, colnames(tmp))
+	k <- grep(baf.colname, colnames(tmp))
+	if(length(j) == 0 || length(k)==0)
+		stop("lrr.colname or baf.colname not in header")
+	colClasses <- as.character(sapply(tmp[1, ], class))
+	index <- setdiff(seq_along(colClasses), c(1, j, k))
+	colClasses[index] <- rep("NULL", length(index)) ## don't read in the other columns
+	colClasses
+}
+
 ## copied from MinimumDistance
-read.bsfiles <- function(path="./", filenames, ext="", row.names=1,
+read.bsfiles <- function(path="", filenames, ext="", row.names=1,
 			 sep="\t",
-			 as.is=TRUE, header=TRUE,
-			 drop=FALSE, ...){
-	fnames <- file.path(path, paste(filenames, ext, sep=""))
+			 lrr.colname="Log.R.Ratio",
+			 baf.colname="B.Allele",
+			 drop=FALSE,
+			 colClasses,
+			 nrows=1.8e6,
+			 ...){
+	if(path != ""){
+		fnames <- file.path(path, paste(filenames, ext, sep=""))
+	} else fnames <- paste(filenames, ext, sep="")
 	stopifnot(all(file.exists(fnames)))
-	for(i in seq_along(filenames)){
-		cat(".")
-		tmp <- read.table(file.path(path, paste(filenames[i], ext, sep="")),
+	if(missing(colClasses)){
+		colClasses <- getColClasses(fnames[1], lrr.colname, baf.colname)
+	}
+	for(i in seq_along(fnames)){
+		##cat(".")
+		tmp <- read.table(fnames[i],
 				  row.names=row.names,
 				  sep=sep,
-				  header=header,
-				  as.is=as.is, ...)
+				  nrows=nrows,
+				  header=TRUE,
+				  stringsAsFactors=FALSE,
+				  colClasses=colClasses,
+				  check.names=FALSE,
+				  comment.char="", ...)
+		tmp <- as.matrix(tmp)
 		if(i==1){
-			j <- grep("Log.R.Ratio", colnames(tmp))
-			k <- grep("B.Allele", colnames(tmp))
-			dat <- array(NA, dim=c(nrow(tmp), 2, length(filenames)))
+			dat <- array(NA, dim=c(nrow(tmp), 2, length(fnames)))
+			j <- grep(lrr.colname, colnames(tmp))
+			k <- grep(baf.colname, colnames(tmp))
+			stopifnot(length(j)==1)
+			stopifnot(length(k)==1)
 			if(!drop){
 				dimnames(dat) <- list(rownames(tmp),
 						      c("lrr", "baf"),
@@ -975,7 +1014,7 @@ read.bsfiles <- function(path="./", filenames, ext="", row.names=1,
 		dat[, 1, i] <- tmp[, j]
 		dat[, 2, i] <- tmp[, k]
 	}
-	cat("\n")
+	##cat("\n")
 	return(dat)
 }
 
@@ -1008,4 +1047,146 @@ artificialData <- function(states, nmarkers){
 mask <- function(query, subject){
 	index <- matchMatrix(findOverlaps(query, subject))[, 1]
 	query <- query[-index, ]
+}
+
+
+getProbB <- function(cdfname, featurenames){
+	cdfpath <- system.file("extdata", package=cdfname)
+	if(file.exists(file.path(cdfpath, "pb_gw6.rda"))){
+		load(file.path(cdfpath, "pb_gw6.rda"))
+		probB <- rep(NA, length(featurenames))
+		pb <- pb[names(pb) %in% featurenames]
+		index <- match(names(pb), featurenames)
+		stopifnot(!any(is.na(index)))
+		probB[index] <- pb
+	} else probB <- rep(0.5, length(featurenames))
+	return(probB)
+}
+
+keyOffFirstFile <- function(filename, cdfname, universe, lrr.colname, baf.colname, ...){
+	## read in one file
+	## return feature matrix in chromosome, position order
+	dat <- read.bsfiles(filenames=filename, lrr.colname=lrr.colname, baf.colname=baf.colname, ...)
+	cdfpath <- system.file("extdata", package=cdfname)
+	if(universe != ""){
+		load(file.path(cdfpath, paste("snpProbes_", universe, ".rda", sep="")))
+		load(file.path(cdfpath, paste("cnProbes_", universe, ".rda", sep="")))
+	} else {
+		load(file.path(cdfpath, "snpProbes.rda"))
+		load(file.path(cdfpath, "cnProbes.rda"))
+	}
+	features <- rbind(snpProbes, cnProbes)
+	keep.index <- which(rownames(features) %in% rownames(dat))
+	features <- features[keep.index, ]
+
+	index.order <- order(features[, "chrom"], features[, "position"])
+	features <- features[index.order, ]
+
+	issnp <- as.integer(rownames(features) %in% rownames(snpProbes))
+	probB <- as.integer(getProbB(cdfname, rownames(features))*100)
+	arm <- .getArm(features[, "chrom"], features[, "position"])
+	index <- match(rownames(features), rownames(dat))
+
+	identical(rownames(dat)[index], rownames(features))
+	features2 <- cbind(features, issnp, probB, arm, index)
+	colnames(features2) <- c(colnames(features), "isSnp", "probB", "arm", "index")
+	return(features2)
+}
+
+hmmOneSample <- function(filename,
+			 lrr.colname,
+			 baf.colname,
+			 sep="\t",
+			 drop=TRUE,
+			 header=TRUE,
+			 colClasses,
+			 features,
+			 TAUP=1e8,
+			 states=1:6,
+			 medianWindow=5,
+			 cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+			 prOutlier=1e-3,
+			 p.hom=0.6,
+			 ...){
+	dat <- read.bsfiles(filenames=filename,
+			    lrr.colname=lrr.colname,
+			    baf.colname=baf.colname,
+			    row.names=1,
+			    sep=sep,
+			    drop=drop, colClasses=colClasses,
+			    nrows=nrow(features)+5000) ## there are about 3-4k markers not in the annotation file
+	dat <- dat[features[, "index"], , ]
+	arm <- features[, "arm"]
+	lrrlist <- split(dat[, 1], arm)
+	lrrlist <- lapply(lrrlist, as.matrix)
+	baflist <- split(dat[, 2], arm)
+	baflist <- lapply(baflist, as.matrix)
+
+	## this part does not change -- could be put outside the for loop
+	chrom <- features[, "chrom"]
+	pos <- features[, "position"]
+	probB <- features[, "probB"]
+	issnp <- features[, "isSnp"]
+	pblist <- split(probB, arm)
+	chrlist <- split(chrom, arm)
+	poslist <- split(pos, arm)
+	snplist <- split(issnp, arm)
+
+	##transitionPr <- lapply(poslist, function(x, TAUP) exp(-2 * diff(x)/TAUP), TAUP=TAUP)
+	##states <- c("hom-del", "hem-del", "normal", "roh", "single-dup", "double-dup")
+	armlist <- split(arm, arm)
+	emitlrr <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %dopar% cnEmission(object=lrrlist[[i]],
+						 k=medianWindow,
+						 cnStates=cnStates,
+						 is.log=TRUE,
+						 is.snp=snplist[[i]],
+						 normalIndex=3)
+	emitbaf <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %do% bafEmission(object=baflist[[i]], is.snp=snplist[[i]], p.hom=p.hom, prOutlier=prOutlier, pb=pblist[[i]])
+	log.E <- foreach(i=seq_along(lrrlist)) %do% (emitlrr[[i]] + emitbaf[[i]])
+	## need centromere locations for hg18
+	log.initial <- log(rep(1/6, 6))
+	rdl <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %dopar% viterbi3(arm=armlist[[i]],
+			      pos=poslist[[i]],
+			      chrom=chrlist[[i]],
+			      LE=log.E[[i]][, 1, ],
+			      log.initial=log.initial,
+			      states=1:6,
+			      id=basename(filename),
+			      TAUP=1e8)
+	rd <- stackRangedData(rdl)
+	return(rd)
+}
+
+hmm3 <- function(filenames, cdfname, universe=c("hg18", "hg19", ""),
+		 lrr.colname="Log.R.Ratio",
+		 baf.colname="B.Allele",
+		 samplesPerProcess=1L,
+		 colClasses,
+		 TAUP=1e8,
+		 medianWindow=5,
+		 cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+		 prOutlier=1e-3,
+		 p.hom=0.6,
+		 ...){
+	## 2. read in annotation
+	if(universe != "")
+		universe <- match.arg(universe)
+	if(missing(colClasses))
+		colClasses <- getColClasses(filenames[1], lrr.colname=lrr.colname, baf.colname=baf.colname)
+	features <- keyOffFirstFile(filename=filenames[1], cdfname=cdfname, universe=universe, colClasses=colClasses,
+				    lrr.colname=lrr.colname, baf.colname=baf.colname, ...)
+	rd <- list()
+	if(samplesPerProcess > 1) message("Currently, files are not split to separate processes")
+	## perhaps replace using a nested foreach...
+	for(i in seq_along(filenames)){
+		rd[[i]] <- hmmOneSample(filename=filenames[i], features=features, colClasses=colClasses,
+					lrr.colname=lrr.colname, baf.colname=baf.colname,
+					TAUP=TAUP,
+					medianWindow=medianWindow,
+					cnStates=cnStates,
+					prOutlier=prOutlier,
+					p.hom=p.hom)
+	}
+	rdHmm <- stackRangedData(rd)
+	return(rdHmm)
 }

@@ -3,6 +3,7 @@ setMethod("cnEmission", signature(object="matrix"),
 		   normalIndex, verbose=TRUE, ...){
 		  stopifnot(length(cnStates) > 1)
 		  stopifnot(is.numeric(cnStates))
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
 		  if(missing(stdev)){
 			  stdev <- .getSds(object)
 			  ## use robust estimate of sample sd
@@ -168,6 +169,7 @@ tnorm <- function(x, mean, sd, lower=0, upper=1){
 
 updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 	##x <- x[is.snp & x > 0 & x < 1]
+	if(is(is.snp, "numeric")) is.snp <- as(is.snp, "logical")
 	x <- x[is.snp]
 	mu <- c(0, 0.5, 1)
 	L <- length(mu)
@@ -243,11 +245,15 @@ updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 ##	} else {## if(length(index) <= 1000)
 ##		sds <- c(sds[1], sds[2], sds[2], sds[3])
 ##	}
+	any.nan <- any(is.nan(sds))
+	any.na <- any(is.na(sds))
+	allvalid <- !any.nan & !any.na
+	stopifnot(allvalid)
 	return(sds)
 }
 
 setMethod("bafEmission", signature(object="matrix"),
-	  function(object, is.snp, cdfName, prOutlier=1e-3, p.hom=0.95, ...){
+	  function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ...){
 ##		  if(!missing(hmm.params)){
 ##			  S <- length(hmm.params[["states"]])
 ##		  } else{
@@ -257,10 +263,13 @@ setMethod("bafEmission", signature(object="matrix"),
 ##			  } else states <- list(...)[["states"]]
 ##			  S <- length(states)
 ##		  }
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
 		  states <- 1:6
 		  S <- 6
 		  if("pb" %in% names(list(...))){
 			  pb <- list(...)[["pb"]]
+			  pb <- pb/100
+			  pb[is.na(pb)] <- 0.5
 		  } else pb <- rep(0.5, nrow(object))
 		  emission <- array(NA, dim=c(nrow(object), ncol(object), S))
 		  ## mixture of 2 truncated normals and 1 normal.
@@ -286,6 +295,7 @@ setMethod("bafEmission", signature(object="matrix"),
 		  ## scores may be helpful
 		  p.out <- prOutlier
 		  q.out <- 1-p.out
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
 		  i <- which(is.snp)
 		  obj <- object[i, , drop=FALSE]
 		  is.hom <- obj < 0.05 | obj > 0.95

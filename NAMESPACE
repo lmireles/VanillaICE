@@ -17,7 +17,7 @@ importFrom(lattice, xyplot, simpleKey, panel.grid, panel.xyplot, lrect, ltext,
 importFrom(grid, grid.newpage, viewport, pushViewport, upViewport, dataViewport)
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
-export(icePlatforms,sd,arrangeSideBySide)
+export(icePlatforms,sd,arrangeSideBySide, hmm3, read.bsfiles)
 exportMethods(cnEmission, gtEmission, bafEmission, hmm, sd, xyplot, xyplot2)
 
 ##exportClasses(BeadStudioSet)
