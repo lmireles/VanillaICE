@@ -3,7 +3,7 @@ importClassesFrom(methods, ANY, character, data.frame, "function", integer, matr
 importMethodsFrom(methods, initialize, show)
 importFrom(utils, setTxtProgressBar, txtProgressBar)
 importMethodsFrom(Biobase, sampleNames)
-importFrom(Biobase,rowMedians)
+importFrom(Biobase,rowMedians,"assayDataElement<-")
 importMethodsFrom(oligoClasses, open, close, coverage2, state)
 ##importMethodsFrom(IRanges, order)
 importFrom(oligoClasses, RangedDataHMM, baf, lrr)
@@ -18,7 +18,8 @@ importFrom(grid, grid.newpage, viewport, pushViewport, upViewport, dataViewport)
 exportClasses(HmmOptionList)
 export(centerAutosomesAt, hmm.setup, HmmOptionList, robustSds, xypanel)
 export(icePlatforms,sd,arrangeSideBySide, hmm3, read.bsfiles)
-exportMethods(cnEmission, gtEmission, bafEmission, hmm, sd, xyplot, xyplot2)
+##exportMethods(cnEmission, gtEmission, bafEmission, hmm, sd, xyplot, xyplot2)
+exportMethods(hmm, sd, xyplot, xyplot2)
 
 ##exportClasses(BeadStudioSet)
 

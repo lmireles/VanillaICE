@@ -16,16 +16,16 @@ test_hmm_oligoSnpSet <- function(){
 	checkIdentical(state(fit2), states)
 	checkTrue(all.equal(coverage2(fit2), nmarkers, tolerance=0.01))
 
-	cnemit <- cnEmission(object=copyNumber(oligoset),
-			     cnStates=c(0, 1, 2, 2, 3, 4),
-			     k=3,
-			     is.log=FALSE,
-			     is.snp=isSnp(oligoset),
-			     normalIndex=3)
-	bafemit <- bafEmission(object=baf(oligoset),
-			       is.snp=rep(TRUE, nrow(oligoset)),
-			       prOutlier=1e-3,
-			       p.hom=0.95)
+	cnemit <- VanillaICE:::cnEmission(object=copyNumber(oligoset),
+					  cnStates=c(0, 1, 2, 2, 3, 4),
+					  k=3,
+					  is.log=FALSE,
+					  is.snp=isSnp(oligoset),
+					  normalIndex=3)
+	bafemit <- VanillaICE:::bafEmission(object=baf(oligoset),
+					    is.snp=rep(TRUE, nrow(oligoset)),
+					    prOutlier=1e-3,
+					    p.hom=0.95)
 	LE <- cnemit+bafemit
 	log.initial <- log(rep(1/6, 6))
 	arm <- VanillaICE:::.getArm(chromosome(oligoset), position(oligoset))

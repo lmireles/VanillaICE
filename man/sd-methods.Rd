@@ -1,6 +1,7 @@
 \name{sd-methods}
 \docType{methods}
 \alias{sd-methods}
+\alias{sd,oligoSnpSet-method}
 \alias{sd}
 \alias{sd,CopyNumberSet-method}
 %\alias{sd,oligoSnpSet-method}

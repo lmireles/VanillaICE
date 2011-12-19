@@ -15,7 +15,7 @@
 }
 
 \usage{
-hmm3(filenames, cdfname, universe=c("hg18", "hg19", ""), lrr.colname = "Log.R.Ratio", baf.colname = "B.Allele", samplesPerProcess = 5, colClasses, TAUP = 1e+08, medianWindow = 5, cnStates = c(-1.5, -0.5, 0, 0, 0.4, 0.8), prOutlier = 0.001, p.hom = 0.6, ...)
+hmm3(filenames, cdfname, universe=c("hg18", "hg19", ""), lrr.colname = "Log.R.Ratio", baf.colname = "B.Allele", samplesPerProcess = 1L, colClasses, TAUP = 1e+08, medianWindow = 5, cnStates = c(-1.5, -0.5, 0, 0, 0.4, 0.8), prOutlier = 0.001, p.hom = 0.6, ...)
 }
 
 \arguments{
