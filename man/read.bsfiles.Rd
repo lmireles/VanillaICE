@@ -72,10 +72,10 @@ read.bsfiles(path = "", filenames, ext = "", row.names = 1, sep = "\t", lrr.coln
 }
 }
 
-\details{
-
-
-}
+%\details{
+%
+%
+%}
 
 \value{
 
@@ -94,7 +94,6 @@ R. Scharpf
 \examples{
 path <- system.file("extdata", package="VanillaICE")
 filename <- list.files(path, pattern="LRRandBAF", full.names=TRUE)
-trace(read.bsfiles, browser)
 dat <- read.bsfiles(filenames=filename)
 }
 \keyword{IO}
