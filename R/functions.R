@@ -647,7 +647,7 @@ xypanel <- function(x, y,
 		    col.state="blue",
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
-	panel.xyplot(x[1], y[1], cex=0) ## set it up, but don't plot
+	panel.xyplot(x[1], y[1], col="white", ...) ## set it up, but don't plot
 	is.snp <- is.snp[subscripts]
 	if(!missing(gt)){
 		gt <- gt[subscripts]
