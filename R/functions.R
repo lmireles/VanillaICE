@@ -610,6 +610,12 @@ probabilityOutlier <- function(cn, k=3, sigmas, verbose=TRUE){
 	} else delta <- as.numeric(cn-median(cn, na.rm=TRUE))
 	if(missing(sigmas)) {
 		sd.delta <- mad(delta, na.rm=TRUE)
+		if(sd.delta < 0.01){
+			sd.delta <- sd(delta, na.rm=TRUE)
+			if(sd.delta < 0.01){
+				stop("standard deviation of delta is near 0 in probabilityOutlier function. Probably too few markers.")
+			}
+		}
 		sigmas <- c(sd.delta*3, sd.delta)  ## set variance for outlier component to be 3 times the normal component
 	}
 	mu <- 0
@@ -1075,6 +1081,8 @@ keyOffFirstFile <- function(filename, cdfname, universe, lrr.colname, baf.colnam
 		load(file.path(cdfpath, "snpProbes.rda"))
 		load(file.path(cdfpath, "cnProbes.rda"))
 	}
+	snpProbes <- get("snpProbes")
+	cnProbes <- get("cnProbes")
 	features <- rbind(snpProbes, cnProbes)
 	keep.index <- which(rownames(features) %in% rownames(dat))
 	features <- features[keep.index, ]
@@ -1117,6 +1125,11 @@ hmmOneSample <- function(filename,
 			    nrows=nrow(features)+5000) ## there are about 3-4k markers not in the annotation file
 	dat <- dat[features[, "index"], , ]
 	arm <- features[, "arm"]
+	suffLengths <- all(table(arm) > 1000)
+	if(!suffLengths){
+		index <- as.integer(which(table(arm) < 1000))
+		arm[arm == index] <- index+1L
+	}
 	lrrlist <- split(dat[, 1], arm)
 	lrrlist <- lapply(lrrlist, as.matrix)
 	baflist <- split(dat[, 2], arm)
@@ -1139,7 +1152,7 @@ hmmOneSample <- function(filename,
 						 k=medianWindow,
 						 cnStates=cnStates,
 						 is.log=TRUE,
-						 is.snp=snplist[[i]],
+						 is.snp=as.logical(snplist[[i]]),
 						 normalIndex=3)
 	emitbaf <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %do% bafEmission(object=baflist[[i]], is.snp=snplist[[i]], p.hom=p.hom, prOutlier=prOutlier, pb=pblist[[i]])
 	log.E <- foreach(i=seq_along(lrrlist)) %do% (emitlrr[[i]] + emitbaf[[i]])
