@@ -134,9 +134,12 @@ hmm3(filenames, cdfname, universe=c("hg18", "hg19", ""), lrr.colname = "Log.R.Ra
   }
 }
 
-\details{
+%\details{
+%
+%
+%}
 
-}
+
 \value{
 
   A object of class \code{RangedDataHMM}.
