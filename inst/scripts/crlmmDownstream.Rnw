@@ -43,11 +43,7 @@
 <<loadCnSet>>=
 require("crlmm")
 library(VanillaICE)
-##library(HapmapCrlmmAffySet)
 library(RColorBrewer)
-##if(!exists("hapmapSet")) data(hapmapSet)
-##class(hapmapSet)
-##dim(hapmapSet)
 @
 
 <<echo=FALSE>>=
@@ -81,7 +77,7 @@ subsetting.  After coercion, the copy number estimates are saved on
 the log base 2 scale.
 
 <<coerceToOligoSnpSet>>=
-cnSetExample <- order(cnSetExample)
+cnSetExample <- chromosomePositionOrder(cnSetExample)
 oligoSet <- as(cnSetExample, "oligoSnpSet")
 range(copyNumber(oligoSet), na.rm=TRUE)
 @
