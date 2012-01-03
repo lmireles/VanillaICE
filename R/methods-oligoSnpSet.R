@@ -1,17 +1,17 @@
 setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, use.baf=FALSE, ...){
+	  function(object, hmm.params, use.baf=FALSE, k=5, ...){
 		  verbose <- hmm.params[["verbose"]] > 0
 		  log.beta.cn <- cnEmission(object,
 					    cnStates=hmm.params[["copynumberStates"]],
+					    k=k,
 					    is.log=hmm.params[["is.log"]],
 					    is.snp=isSnp(object),
 					    normalIndex=hmm.params[["normalIndex"]],...)
 		  if(use.baf){
-
 			  if(!"baf" %in% ls(assayData(object))){
 				  stop("use.baf is true, but baf not in assayData.  See calculateRBaf.")
 			  }
-			  log.beta.gt <- bafEmission(object, hmm.params, ...)
+			  log.beta.gt <- bafEmission(object, ...)
 		  } else {
 			  log.beta.gt <- gtEmission(object, hmm.params, ...)
 		  }
@@ -29,7 +29,7 @@ setMethod("hmm2", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 
 
 setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
-	  function(object, hmm.params, use.baf=FALSE, ...){
+	  function(object, hmm.params, use.baf=FALSE, k=5, ...){
 		  v2 <- hmm.params$verbose
 		  marker.index <- validChromosomeIndex(object)
 		  object <- object[marker.index, ]
@@ -39,12 +39,10 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  if(missingGT){
 			  if(v2 > 0) message("Some genotypes are NAs.  The default assumes that prGenotypeMissing is the same for each state -- see hmmOptions")
 		  }
-		  if(v2 > 0){
-			  if("k" %in% names(list(...))){
-				  k <- list(...)[["k"]]
-			  } else k <- 3
-			  message("Using a running median of ", k, " markers to estimate the outlier probability.")
-		  }
+##		  if("k" %in% names(list(...))){
+##			  k <- list(...)[["k"]]
+##		  } else k <- 3
+		  if(v2 > 0)  message("Using a running median of ", k, " markers to estimate the outlier probability.")
 		  is.ordered <- checkOrder(object)
 		  if(!is.ordered) object <- order(object)
 		  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))
@@ -59,11 +57,11 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 		  for(j in seq_along(sample.index)){
 			  jj <- sample.index[j]
 			  tmp <- vector("list", length(chromosomes))
-			  for(k in seq_along(chromosomes)){
-				  CHR <- chromosomes[k]
-				  i <- marker.index.list[[k]]
+			  for(m in seq_along(chromosomes)){
+				  CHR <- chromosomes[m]
+				  i <- marker.index.list[[m]]
 				  obj <- object[i, jj]
-				  tmp[[k]] <- hmm2(object=obj, hmm.params=hmm.params, use.baf=use.baf, ...)
+				  tmp[[m]] <- hmm2(object=obj, hmm.params=hmm.params, use.baf=use.baf, k=k, ...)
 			  }
 			  if(length(tmp) > 1){
 				  rdlist <- RangedDataList(tmp)
@@ -213,9 +211,12 @@ setMethod("cnEmission", signature(object="oligoSnpSet"),
 		  stopifnot(is.ordered)
 		  CN <- copyNumber(object)
 		  sds <- sd(object)
-		  emit <- cnEmission(object=CN, stdev=sds,
-				     k=k, cnStates=cnStates,
-				     is.log=is.log, is.snp=is.snp,
+		  emit <- cnEmission(object=CN,
+				     stdev=sds,
+				     k=k,
+				     cnStates=cnStates,
+				     is.log=is.log,
+				     is.snp=is.snp,
 				     normalIndex=normalIndex, ...)
 		  return(emit)
 	  })

@@ -1,12 +1,14 @@
 setMethod("cnEmission", signature(object="matrix"),
 	  function(object, stdev, k=5, cnStates, is.log, is.snp,
-		   normalIndex, ...){
+		   normalIndex, verbose=TRUE, ...){
 		  stopifnot(length(cnStates) > 1)
 		  stopifnot(is.numeric(cnStates))
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
 		  if(missing(stdev)){
+			  stdev <- .getSds(object)
 			  ## use robust estimate of sample sd
-			  s <- apply(object, 2, mad, na.rm=TRUE)
-			  stdev <- matrix(s, nrow(object), ncol(object), byrow=TRUE)
+			  ##s <- apply(object, 2, mad, na.rm=TRUE)
+			  ##stdev <- matrix(s, nrow(object), ncol(object), byrow=TRUE)
 		  }
 		  stopifnot(all(dim(object) == dim(stdev)))
 		  if(any(colSums(is.na(object)) == nrow(object))){
@@ -14,12 +16,13 @@ setMethod("cnEmission", signature(object="matrix"),
 		  }
 		  S <- length(cnStates)
 		  emission.cn <- array(NA, dim=c(nrow(object), ncol(object), S))
+		  rr <- range(object, na.rm=TRUE, finite=TRUE)
 		  if(is.log){
-			  MIN.CN <- -10
-			  MAX.CN <- 2.5
+			  MIN.CN <- pmax(-10, rr[1])
+			  MAX.CN <- pmin(2.5, rr[2])
 		  } else {
-			  MIN.CN <- 0
-			  MAX.CN <- 10
+			  MIN.CN <- pmax(0, rr[1])
+			  MAX.CN <- pmin(10, rr[2])
 		  }
 		  object <- pmin(object, MAX.CN)
 		  object <- pmax(object, MIN.CN)
@@ -32,7 +35,7 @@ setMethod("cnEmission", signature(object="matrix"),
 				  s <- stdev[snp.index, j]
 				  mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
 				  old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-				  prOutlier <- probabilityOutlier(cn, k=k)
+ 				  prOutlier <- probabilityOutlier(cn, k=k)
 				  for(l in seq_along(cnStates)){
 					  e <- (1-prOutlier) * dnorm(x=cn, mean=mu.snp[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
 					  emission.cn[snp.index, j, l] <- e
@@ -166,6 +169,7 @@ tnorm <- function(x, mean, sd, lower=0, upper=1){
 
 updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 	##x <- x[is.snp & x > 0 & x < 1]
+	if(is(is.snp, "numeric")) is.snp <- as(is.snp, "logical")
 	x <- x[is.snp]
 	mu <- c(0, 0.5, 1)
 	L <- length(mu)
@@ -241,16 +245,40 @@ updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 ##	} else {## if(length(index) <= 1000)
 ##		sds <- c(sds[1], sds[2], sds[2], sds[3])
 ##	}
+	any.nan <- any(is.nan(sds))
+	any.na <- any(is.na(sds))
+	allvalid <- !any.nan & !any.na
+	stopifnot(allvalid)
 	return(sds)
 }
 
 setMethod("bafEmission", signature(object="matrix"),
-	  function(object, hmm.params, is.snp, cdfName, ...){
-		  S <- length(hmm.params[["states"]])
+	  function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ...){
+##		  if(!missing(hmm.params)){
+##			  S <- length(hmm.params[["states"]])
+##		  } else{
+##			  nms <- names(list(...))
+##			  if(!"states" %in% nms){
+##				  stop("if hmm.params is missing, states must be specified")
+##			  } else states <- list(...)[["states"]]
+##			  S <- length(states)
+##		  }
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
+		  states <- 1:6
+		  S <- 6
+		  if("pb" %in% names(list(...))){
+			  pb <- list(...)[["pb"]]
+			  pb <- pb/100
+			  pb[is.na(pb)] <- 0.5
+		  } else pb <- rep(0.5, nrow(object))
 		  emission <- array(NA, dim=c(nrow(object), ncol(object), S))
 		  ## mixture of 2 truncated normals and 1 normal.
 		  ##  Assume mu is known, but sigma is not.
 		  sds <- updateSigma(object, is.snp, sigma0=c(0.02, 0.04, 0.02))
+		  if("scalesd" %in% names(list(...))){
+			  scalesd <- list(...)[["scalesd"]]
+			  sds <- sds*scalesd
+		  }
 		  sd0 <- sds[1]
 		  sd1 <- sds[3]
 		  sd.5 <- sds[2]
@@ -265,25 +293,63 @@ setMethod("bafEmission", signature(object="matrix"),
 		  ##
 		  ## Can we estimate p? ... the genotype confidence
 		  ## scores may be helpful
-		  p.out <- 1e-8
+		  p.out <- prOutlier
 		  q.out <- 1-p.out
+		  if(is(is.snp, "numeric")) is.snp <- as.logical(is.snp)
 		  i <- which(is.snp)
 		  obj <- object[i, , drop=FALSE]
+		  is.hom <- obj < 0.05 | obj > 0.95
+		  ##obj2 <- obj
+		  ##obj <- 0.0052
 		  TN0 <- tnorm(obj, 0, sd0)
 		  TN1 <- tnorm(obj, 1, sd1)
 		  TN.3 <- tnorm(obj, 1/3, sd.5)
 		  TN.6 <- tnorm(obj, 2/3, sd.5)
-		  TN.25 <- tnorm(obj, 0.25, sd.5);
-		  TN.5 <- tnorm(obj, 0.5, sd.5);
+		  TN.25 <- tnorm(obj, 0.25, sd.5)
+		  TN.5 <- tnorm(obj, 0.5, sd.5)
 		  TN.75 <- tnorm(obj, 0.75, sd.5)
-		  pr2 <- 0.5*TN0 + 0.5*TN1
+		  p <- pb[i]
+		  if(any(is.na(p)))
+			  p[is.na(p)] <- 0.5
+		  pr2 <- (1-p)*TN0 + p*TN1
 		  beta.hemizygous <- q.out*pr2 + p.out
 		  emission[i, , 1] <- p.out + q.out*dunif(obj, 0, 1) ## 0
 		  emission[i, , 2] <- beta.hemizygous     ## 1
-		  emission[i, , 3] <- p.out + q.out*(1/3*TN0 + 1/3*TN.5 + 1/3*TN1) ## 2
 		  emission[i, , 4] <- beta.hemizygous  ## 2, ROH
-		  emission[i, , 5] <- p.out + q.out*(1/4*TN0 + 1/4*TN.3 + 1/4*TN.6 + 1/4*TN1) ## 3
-		  emission[i, , 6] <- p.out + q.out*(1/5*TN0 + 1/5*tnorm(obj, 1/4, sd.5) + 1/5*TN.5 + 1/5*tnorm(obj, 0.75, sd.5) + 1/5*TN1)
+		  ## if pb is small and genotype is AA
+		  ##   emission for hemiz. del and normal is close
+		  ## if pb is 1/2 and genotype is AA
+		  ##   emission for hemiz. del roughly 2 times normal
+		  ##   -do we want this to be the case?...
+		  ##   -if we force the probs for hom. be the same,
+		  ##    allowing only the prob to het to differ the state would always be normal
+		  ##  Want the probs for hom to differ only by a small amount
+		  ##    such that only long stretches of roh overcome the transition pr.
+		  q2 <- (1-p)^2
+		  pq <- p*(1-p)
+		  p2 <- p^2
+		  emit.normal <- p.out + q.out*(q2*TN0 + 2*pq*TN.5 + p2*TN1) ## 2
+		  q3 <- (1-p)^3
+		  p2q <- p^2*(1-p)
+		  pq2 <- p*(1-p)^2
+		  p3 <- p^3
+		  emit5 <- p.out + q.out*(q3*TN0 + 3*pq2*TN.3 + 3*p2q*TN.6 + p3*TN1) ## 3
+		  q4 <- (1-p)^4
+		  pq3 <- p*(1-p)^3
+		  p2q2 <- p^2*(1-p)^2
+		  p3q <- p^3*(1-p)
+		  p4 <- p^4
+		  emit6 <- p.out + q.out*(q4*TN0 + 4*pq3*tnorm(obj, 1/4, sd.5) + 6*p2q2*TN.5 + 4*p3q*tnorm(obj, 0.75, sd.5) + p4*TN1)
+		  ## homozygous genotypes are less informative
+		  for(j in seq_len(ncol(obj))){
+			  i.hom <- which(is.hom[,j])
+			  emit.normal[i.hom, j] <- (1-p.hom)*beta.hemizygous[i.hom, j]+p.hom*emit.normal[i.hom, j]
+			  emit5[i.hom, j] <- (1-p.hom)*beta.hemizygous[i.hom, j]+emit5[i.hom, j]
+			  emit6[i.hom, j] <- (1-p.hom)*beta.hemizygous[i.hom, j]+emit5[i.hom, j]
+		  }
+		  emission[i, , 3] <- emit.normal
+		  emission[i, , 5] <- emit5
+		  emission[i, , 6] <- emit6
 		  ## assign 1 as the emission probablily for all nonpolymorphic markers
 		  ## (across all states)
 		  np.index <- which(!is.snp)

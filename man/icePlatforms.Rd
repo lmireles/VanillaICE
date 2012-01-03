@@ -29,7 +29,7 @@ R. Scharpf
 
 
 \seealso{
-  \code{\link{HmmOptionList}}, \code{\link{gtEmission}}
+  \code{\link{HmmOptionList}}
 }
 \examples{
 icePlatforms()
