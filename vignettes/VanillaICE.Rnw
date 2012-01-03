@@ -191,7 +191,6 @@ is zero.
 <<fit_van>>=
 ## first 2 chromosomes
 oligoSet <- oligoSet[chromosome(oligoSet) <= 2, ]
-trace(VanillaICE:::viterbi, browser)
 fit.van <- hmm(oligoSet, hmmOpts)
 @
 
