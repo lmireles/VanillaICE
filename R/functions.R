@@ -1090,14 +1090,20 @@ keyOffFirstFile <- function(filename, cdfname, universe, lrr.colname, baf.colnam
 	index.order <- order(features[, "chrom"], features[, "position"])
 	features <- features[index.order, ]
 
-	issnp <- as.integer(rownames(features) %in% rownames(snpProbes))
+	issnp <- as.logical(rownames(features) %in% rownames(snpProbes))
 	probB <- as.integer(getProbB(cdfname, rownames(features))*100)
 	arm <- .getArm(features[, "chrom"], features[, "position"])
 	index <- match(rownames(features), rownames(dat))
 
 	identical(rownames(dat)[index], rownames(features))
-	features2 <- cbind(features, issnp, probB, arm, index)
-	colnames(features2) <- c(colnames(features), "isSnp", "probB", "arm", "index")
+	##features2 <- cbind(features, issnp, probB, arm, index)
+	features2 <- data.frame(chrom=features[, "chrom"],
+				position=features[, "position"],
+				probB=probB,
+				isSnp=issnp,
+				arm=arm,
+				index=index)
+	##colnames(features2) <- c(colnames(features), "isSnp", "probB", "arm", "index")
 	return(features2)
 }
 
@@ -1134,7 +1140,7 @@ hmmOneSample <- function(filename,
 	lrrlist <- lapply(lrrlist, as.matrix)
 	baflist <- split(dat[, 2], arm)
 	baflist <- lapply(baflist, as.matrix)
-
+	##
 	## this part does not change -- could be put outside the for loop
 	chrom <- features[, "chrom"]
 	pos <- features[, "position"]
@@ -1144,20 +1150,65 @@ hmmOneSample <- function(filename,
 	chrlist <- split(chrom, arm)
 	poslist <- split(pos, arm)
 	snplist <- split(issnp, arm)
-
+	armlist <- split(arm, arm)
+	##
 	##transitionPr <- lapply(poslist, function(x, TAUP) exp(-2 * diff(x)/TAUP), TAUP=TAUP)
 	##states <- c("hom-del", "hem-del", "normal", "roh", "single-dup", "double-dup")
-	armlist <- split(arm, arm)
-	emitlrr <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %dopar% cnEmission(object=lrrlist[[i]],
-						 k=medianWindow,
-						 cnStates=cnStates,
-						 is.log=TRUE,
-						 is.snp=as.logical(snplist[[i]]),
-						 normalIndex=3)
-	emitbaf <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %do% bafEmission(object=baflist[[i]], is.snp=snplist[[i]], p.hom=p.hom, prOutlier=prOutlier, pb=pblist[[i]])
-	log.E <- foreach(i=seq_along(lrrlist)) %do% (emitlrr[[i]] + emitbaf[[i]])
+	emitlrr <- foreach(object=lrrlist,
+			   is.snp=snplist,
+			   chrom=chrlist,
+			   .packages="VanillaICE") %dopar% {
+				   cnEmission(object=object,
+					      k=medianWindow,
+					      cnStates=cnStates,
+					      is.log=TRUE,
+					      is.snp=is.snp,
+					      normalIndex=3,
+					      chrom=chrom)
+			   }
+##	bsSet2 <- bsSet[match(idlist[[1]], featureNames(bsSet)), ]
+##	bf <- VanillaICE:::bafEmission(object=baf(bsSet2), is.snp=isSnp(bsSet2),
+##				       prOutlier=1e-3, p.hom=0.6) ## p.hom is critical
+##	cn <- VanillaICE:::cnEmission(object=lrr(bsSet2),
+##				      k=5,
+##				      cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+##				      is.snp=isSnp(bsSet2),
+##				      normalIndex=3,
+##				      is.log=TRUE)
+##	emitlrr <- cnEmission(object=lrrlist[[i]],
+##			      k=medianWindow,
+##			      cnStates=cnStates,
+##			      is.log=TRUE,
+##			      is.snp=as.logical(snplist[[i]]),
+##			      normalIndex=3,
+##			      chrom=chrlist[[i]])
+	emitbaf <- foreach(object=baflist,
+			   is.snp=snplist,
+			   pb=pblist,
+			   .packages="VanillaICE") %do% {
+				   bafEmission(object=object,
+					       is.snp=is.snp,
+					       p.hom=p.hom,
+					       prOutlier=prOutlier,
+					       pb=pb)
+			   }
+##	tmp <- bafEmission(object=baflist[[i]],
+##			   is.snp=snplist[[i]],
+##			   p.hom=p.hom,
+##			   prOutlier=prOutlier,
+##			   pb=pblist[[i]])
+##	emitbaf <- bafEmission(object=baflist[[i]],
+##			       is.snp=snplist[[i]],
+##			       p.hom=p.hom,
+##			       prOutlier=prOutlier,
+##			       pb=pblist[[i]])
+	log.E <- foreach(lrr=emitlrr, baf=emitbaf)  %do% (lrr+baf)
 	## need centromere locations for hg18
-	log.initial <- log(rep(1/6, 6))
+	####log.initial <- log(rep(1/6, 6))
+	e <- 1e-5
+	log.initial <- rep(e, 6)
+	log.initial[normalIndex] <- 1-5*e
+	log.initial <- log(log.initial)
 	rdl <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %dopar% viterbi3(arm=armlist[[i]],
 			      pos=poslist[[i]],
 			      chrom=chrlist[[i]],
