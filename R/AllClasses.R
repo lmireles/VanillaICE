@@ -5,7 +5,7 @@ setMethod("initialize", "HmmOptionList",
 	  })
 
 
-setClass("BeadStudioSet", contains="eSet")##,
+setClass("BeadStudioSet", contains="gSet")##,
 ##	 	 prototype = prototype(
 ##		 new("VersionedBiobase",
 ##		     versions=c(classVersion("BeadStudioSet"), BeadStudioSet="0.0.1"))))
