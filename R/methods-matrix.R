@@ -15,7 +15,7 @@ setMethod("cnEmission", signature(object="matrix"),
 cnEmissionFromMatrix <- function(object, stdev, k=5, cnStates,
 				 is.log, is.snp, normalIndex,
 				 verbose=TRUE,
-				 chrom){
+				 chrom, ...){
 	stopifnot(length(cnStates) > 1)
 	stopifnot(is.numeric(cnStates))
 	if(missing(stdev)){
@@ -131,22 +131,7 @@ setMethod("gtEmission", signature(object="matrix"),
 		  return(logemit)
 	  })
 
-##---------------------------------------------------------------------------
-##
-## From MinimumDistance
-##
-##---------------------------------------------------------------------------
-tnorm <- function(x, mean, sd, lower=0, upper=1){
-	phi <- function(x, mu, sigma) dnorm(x, mu, sigma)
-	## cdf of standard normal
-	Phi <- function(x, mu, sigma) pnorm(x, mu, sigma)
-	res <- phi(x, mean, sd)/(Phi(upper, mean, sd)-Phi(lower, mean, sd))
-	ind <- which(x < lower | x > upper)
-	if(any(ind)){
-		res[ind] <- 0
-	}
-	res
-}
+
 ##mosaicProb <- function(bf, sd.mosaic, sd0, sd.5, sd1){
 ##	initialP <- 0.99## initial probabilty not mosaic
 ##	iter <- 1
@@ -188,6 +173,7 @@ tnorm <- function(x, mean, sd, lower=0, upper=1){
 updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 	##x <- x[is.snp & x > 0 & x < 1]
 	x <- x[is.snp]
+	x <- x[x > 0 & x < 1]
 	mu <- c(0, 0.5, 1)
 	L <- length(mu)
 	pi <- rep(1/L, L)
@@ -200,9 +186,9 @@ updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 	sigma <- sigma0
 	for(iter in seq_len(nUpdates)){
 		if(iter > nUpdates) break()
-		den[, 1] <- pi[1]*tnorm(x, mean=mu[1], sigma[1])
+		den[, 1] <- pi[1]*tnorm(x, mean=mu[1], sigma[1], lower=0)
 		den[, 2] <- pi[2]*tnorm(x, mean=mu[2], sigma[2])
-		den[, 3] <- pi[3]*tnorm(x, mean=mu[3], sigma[3])
+		den[, 3] <- pi[3]*tnorm(x, mean=mu[3], sigma[3], upper=1)
 		D <- rowSums(den, na.rm=TRUE)
 		for(i in seq_len(L)){
 			num <- den[, i] ##pi[i] * dnorm(x, mu[i], sigma)
@@ -250,20 +236,13 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 		pb[is.na(pb)] <- 0.5
 	} else pb <- rep(0.5, nrow(object))
 	emission <- array(NA, dim=c(nrow(object), ncol(object), S))
-	## mixture of 2 truncated normals and 1 normal.
+	##if(ncol(object) > 1 | sum(is.snp) < 1000){
 	##  Assume mu is known, but sigma is not.
-	if(ncol(object) > 1 | sum(is.snp) < 1000){
-		sds <- updateSigma(object, is.snp, sigma0=c(0.02, 0.04, 0.02))
-	} else {
-		tmp <- kmeans(object[is.snp, ], centers=c(0,0.5,1))
-		sds <- sapply(split(object[is.snp, ], tmp$cluster), mad, na.rm=TRUE)
-	}
-	minsd <- min(sds)
-	if(minsd > 0.02) {
-		tmp <- kmeans(object[is.snp, ], centers=c(0,1/4, 1/3, 0.5,2/3, 3/4, 1))
-		sds <- sapply(split(object[is.snp, ], tmp$cluster), mad, na.rm=TRUE)
-		prOutlier <- prOutlier*10*minsd/.02
-	}
+	##sds <- updateSigma(object, is.snp, sigma0=c(0.02, 0.04, 0.02))
+	sds <- apply(object, 2, updateSigma, is.snp=is.snp, sigma0=c(0.02,0.04, 0.02))
+##	} else {
+##		tmp <- kmeans(object[is.snp, ], centers=c(0,0.5,1))
+##		sds <- sapply(split(object[is.snp, ], tmp$cluster), mad, na.rm=TRUE)
 	if("scalesd" %in% names(list(...))){
 		scalesd <- list(...)[["scalesd"]]
 		sds <- sds*scalesd
@@ -292,20 +271,19 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 	##obj <- 0.0052
 	TN0 <- tnorm(obj, 0, sd0)
 	TN1 <- tnorm(obj, 1, sd1)
-	## bound the truncated normals. outliers should be handled by the uniform component
-	##		  TN.25 <- tnorm(obj, 0.25, sd.5, upper=0.45, lower=0.05)
-	##		  TN.5 <- tnorm(obj, 0.5, sd.5, upper=0.75, lower=0.25)
-	##		  TN.75 <- tnorm(obj, 0.75, sd.5, upper=0.95, lower=0.55)
-	TN.3 <- tnorm(obj, 1/3, sd.5, lower=0.05, upper=0.45)
-	TN.6 <- tnorm(obj, 2/3, sd.5, lower=0.55, upper=0.95)
-	TN.25 <- tnorm(obj, 0.25, sd.5, lower=0.05, upper=0.45)
-	TN.5 <- tnorm(obj, 0.5, sd.5, lower=0.05, upper=0.95)
-	TN.75 <- tnorm(obj, 0.75, sd.5, lower=0.05, upper=0.45)
+	TN.5 <- tnorm(obj, 0.5, sd.5)
+	TN.3 <- tnorm(obj, 1/3, sd0)
+	TN.6 <- tnorm(obj, 2/3, sd0)
+	TN.25 <- tnorm(obj, 0.25, sd0)
+	TN.3 <- tnorm(obj, 1/3, sd0)
+	TN.6 <- tnorm(obj, 2/3, sd0)
+	TN.25 <- tnorm(obj, 0.25, sd0)
+	TN.75 <- tnorm(obj, 0.75, sd0)
 	p <- pb[i]
 	if(any(is.na(p)))
 		p[is.na(p)] <- 0.5
 	pr2 <- (1-p)*TN0 + p*TN1
-	beta.hemizygous <- q.out*pr2 + p.out
+	beta.hemizygous <- (1-p.out/1000)*pr2 + p.out/1000
 	emission[i, , 1] <- p.out + q.out*dunif(obj, 0, 1) ## 0
 	emission[i, , 2] <- beta.hemizygous     ## 1
 	emission[i, , 4] <- beta.hemizygous  ## 2, ROH
@@ -334,6 +312,7 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 	p4 <- p^4
 	emit6 <- p.out + q.out*(q4*TN0 + 4*pq3*tnorm(obj, 1/4, sd.5) + 6*p2q2*TN.5 + 4*p3q*tnorm(obj, 0.75, sd.5) + p4*TN1)
 	## homozygous genotypes are less informative
+	## small p.hom makes homozygous genotypes less informative
 	for(j in seq_len(ncol(obj))){
 		i.hom <- which(is.hom[,j])
 		##emit.normal[i.hom, j] <- (1-p.hom)*beta.hemizygous[i.hom, j]+p.hom*emit.normal[i.hom, j]
@@ -345,7 +324,7 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 	emission[i, , 5] <- emit5
 	emission[i, , 6] <- emit6
 	emit <- emission[is.snp, 1, ]
-	emit <- cbind(round(emit, 2), obj)
+	##emit <- cbind(round(emit, 2), obj)
 	colnames(emit)[ncol(emit)] <- "baf"
 	## assign 1 as the emission probablily for all nonpolymorphic markers
 	## (across all states)
@@ -353,4 +332,146 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 	emission[np.index, , ] <- 1
 	logemit <- log(emission)
 	return(logemit)
+}
+
+simulateSingleDupBaf <- function(b, is.snp, from, to, ...){
+	stopifnot(is(b, "numeric"))
+	names(b) <- NULL
+	b.all <- b
+	b <- b[is.snp]
+	sds <- VanillaICE:::updateSigma(b, is.snp=rep(TRUE, length(b)), sigma0=c(0.02, 0.04, 0.02))
+##	if("pb" %in% names(list(...))){
+##		pb <- list(...)[["pb"]]
+##		pb <- pb/100
+##		pb[is.na(pb)] <- 0.5
+##		p <- pb
+##	} else p <- rep(0.5, length(b))
+	p <- 0.5
+	q3 <- (1-p)^3
+	p2q <- p^2*(1-p)
+	pq2 <- p*(1-p)^2
+	p3 <- p^3
+	##tmp <- cbind(q3, 3*pq2, 3*p2q, p3)
+	##stopifnot(all(rowSums(tmp) == 1))
+	index <- seq(from, to, by=1)
+
+	z <- sample(1:4, size=length(index), replace=TRUE, prob=c(q3, 3*pq2, 3*p2q, p3))
+	nZ <- table(z)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1/3, sds[1], lower=0, upper=1)
+	d3 <- rtnorm(length(index), 2/3, sds[1], lower=0, upper=1)
+	d4 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	simB <- rep(NA, length(index))
+	simB[z==1] <- sample(d1, nZ[1])
+	simB[z==2] <- sample(d2, nZ[2])
+	simB[z==3] <- sample(d3, nZ[3])
+	simB[z==4] <- sample(d4, nZ[4])
+	b.all[index] <- simB
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	return(b.all)
+}
+
+simulateSingleDupLrr <- function(r, is.snp, cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+				 from, to, ...){
+	stdev <- .getSds(r)
+	if(is(stdev, "matrix")) stopifnot(ncol(stdev) == ncol(object))
+	stopifnot(all(dim(r) == dim(stdev)))
+	if(any(colSums(is.na(r)) == nrow(r))){
+		stop("Some samples have all missing values. Exclude these samples before continuing.")
+	}
+	S <- length(cnStates)
+	for(j in seq_len(ncol(r))){
+		##snp.index <- which(is.snp)
+		cn <- r[, j]
+		snp.index <- which(is.snp & !is.na(cn))
+		if(length(snp.index) > 0){
+			cn <- cn[snp.index]
+			if(is(stdev, "matrix")){
+				s <- stdev[snp.index, j]
+			} else s <- stdev[snp.index]
+			prOutlier <- probabilityOutlier(cn, k=k)
+			for(l in seq_along(cnStates)){
+				e <- (1-prOutlier) * dnorm(x=cn, mean=mu.snp[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
+			}
+		}
+	}
+	simR <- rep(NA, length(index))
+	simR[z==1] <- sample(d1, nZ[1])
+	simR[z==2] <- sample(d2, nZ[2])
+	simB[z==3] <- sample(d3, nZ[3])
+	simB[z==4] <- sample(d4, nZ[4])
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	return(r.all)
+}
+
+
+simulateDoubleDupBaf <- function(b, is.snp, from, to, ...){
+	stopifnot(is(b, "numeric"))
+	names(b) <- NULL
+	b.all <- b
+	b <- b[is.snp]
+	sds <- VanillaICE:::updateSigma(b, is.snp=rep(TRUE, length(b)), sigma0=c(0.02, 0.04, 0.02))
+##	if("pb" %in% names(list(...))){
+##		pb <- list(...)[["pb"]]
+##		pb <- pb/100
+##		pb[is.na(pb)] <- 0.5
+##		p <- pb
+##	} else p <- rep(0.5, length(b))
+	p <- 0.5
+	q4 <- (1-p)^4
+	pq3 <- p*(1-p)^3
+	p2q2 <- p^2*(1-p)^2
+	p3q <- p^3*(1-p)
+	p4 <- p^4
+	##tmp <- cbind(q3, 3*pq2, 3*p2q, p3)
+	##stopifnot(all(rowSums(tmp) == 1))
+	index <- seq(from, to, by=1)
+	z <- sample(1:5, size=length(index), replace=TRUE, prob=c(q4, pq3, p2q2, p3q, p4))
+	nZ <- table(z)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1/4, sds[1], lower=0, upper=1)
+	d3 <- rtnorm(length(index), 1/2, sds[2], lower=0, upper=1)
+	d4 <- rtnorm(length(index), 3/4, sds[1], lower=0, upper=1)
+	d5 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	simB <- rep(NA, length(index))
+	simB[z==1] <- sample(d1, nZ[1])
+	simB[z==2] <- sample(d2, nZ[2])
+	simB[z==3] <- sample(d3, nZ[3])
+	simB[z==4] <- sample(d4, nZ[4])
+	simB[z==5] <- sample(d5, nZ[5])
+	b.all[index] <- simB
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	return(b.all)
+}
+
+simulateSingleDelBaf <- function(b, is.snp, from, to, ...){
+	index <- seq(from, to, by=1)
+	stopifnot(all(diff(index) > 0))
+	stopifnot(length(index) > 1)
+	stopifnot(is(b, "numeric"))
+	names(b) <- NULL
+	b.all <- b
+	b <- b[is.snp]
+	sds <- VanillaICE:::updateSigma(b, is.snp=rep(TRUE, length(b)), sigma0=c(0.02, 0.04, 0.02))
+##	if("pb" %in% names(list(...))){
+##		pb <- list(...)[["pb"]]
+##		pb <- pb/100
+##		pb[is.na(pb)] <- 0.5
+##		p <- pb
+##	} else p <- rep(0.5, length(b))
+	p <- 0.5
+	q <- 1-p
+	##tmp <- cbind(q3, 3*pq2, 3*p2q, p3)
+	##stopifnot(all(rowSums(tmp) == 1))
+
+	z <- sample(1:2, size=length(index), replace=TRUE, prob=c(p, q))
+	nZ <- table(z)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	simB <- rep(NA, length(index))
+	simB[z==1] <- sample(d1, nZ[1])
+	simB[z==2] <- sample(d2, nZ[2])
+	b.all[index] <- simB
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	return(b.all)
 }

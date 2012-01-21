@@ -107,39 +107,5 @@
 ##	mykey
 ##}
 
-my.xypanel <- function(x, y,
-		       x0, x1, chr.size,
-		       col, border, coverage,
-		       chr, show.coverage=TRUE,
-		       max.y,
-		       chromosomeAnnotation,
-		       addCentromere=TRUE,
-		       ..., subscripts){
-	panel.grid(h=-1, v=10)
-	panel.xyplot(x, y, ..., subscripts)
-	h <- 0.75
-	lrect(xleft=x0[subscripts],
-	      xright=x1[subscripts],
-	      ybottom=y-h/2,
-	      ytop=y+h/2,
-	      border=border[subscripts],
-	      col=col[subscripts], ...)
-	if(show.coverage)
-		ltext(x, y,labels=coverage[subscripts], cex=0.6)
-	##plot centromere
-	if(addCentromere){
-		chr <- unique(as.integer(as.character(chr)))
-		coords <- chromosomeAnnotation[chr, 1:2]/1e6
-		lrect(xleft=coords[1],
-		      xright=coords[2],
-		      ybottom=0,
-		      ytop=max.y+h/2,
-		      col="grey",
-		      border="grey")
-	}
-}
 
-prepanel.fxn <- function(x,y, chr.size, ..., subscripts){
-	list(xlim=c(0, unique(chr.size[subscripts])), ylim=range(as.integer(as.factor(y[subscripts]))))
-}
 

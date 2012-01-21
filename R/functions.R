@@ -185,8 +185,7 @@ computeLoglikForRange <- function(from, to,
 				  lP.A2N,
 				  lP.N2A,
 				  lP.N2N,
-				  lP.A2A
-				  ){
+				  lP.A2A){
 	index <- seq(from, to)
 	thisState <- unique(viterbiSequence[index])
 	if(thisState == normalIndex) return(0)
@@ -637,6 +636,38 @@ probabilityOutlier <- function(cn, k=3, sigmas, verbose=TRUE){
 	return(gamma)
 }
 
+##probabilityOutlierBaf <- function(b, centers, sigmas, lower, upper, tau=rep(1/length(centers), length(centers))){
+##	## outlier ~ N(0, sigma1), cn ~ N(0, sigma2), sigma2 << sigma1
+##	## lik= prod_i=1^N Pr(outlier) N(0, sigma1) + (1-Pr(outlier)) N(0, sigma2)
+##	epsilon <- 2; counter <- 1
+##	while(epsilon > 0.01){
+##		## two component Gaussian mixture
+##		## sigma[1] is the variance for the outlier component
+##		##gamma <- (tau * dnorm(delta, mu, sigmas[1]))/ (tau * dnorm(delta, mu, sigmas[1]) + (1-tau)*dnorm(delta, mu, sigmas[2]))
+##		num <- tau[1]*tnorm(b, centers[1], sigmas[1],
+##				    lower=lower[1], upper=upper[1])
+##		tmp <- vector("list", length(centers))
+##		for(i in seq_along(centers)){
+##			tmp[[i]] <- tau[i]*tnorm(b, centers[i],
+##						 sigmas[i],
+##						 lower=lower[i],
+##						 upper=upper[i])
+##		}
+##		gamma <- vector("list", length(centers))
+##		for(i in seq_along(centers[-1])){
+##			gamma[[i]] <- tmp[[1]]/sum(tmp[-1])
+##		## gamma near 1 is likely an outlier
+##		## gamma near 0 is likely not an outlier
+##		tau.next <- mean(gamma)
+##		epsilon <- abs(tau.next - tau)
+##		tau <- tau.next
+##		counter <- counter+1
+##		if(counter > 10) break()
+##	}
+##	## plot(delta, gamma)
+##	return(gamma)
+##}
+
 
 
 
@@ -736,58 +767,7 @@ genotypeEmissionCrlmm <- function(object, hmm.params, gt.conf, cdfName){
 	return(f)
 }
 
-xypanel <- function(x, y,
-		    gt,
-		    is.snp,
-		    range,
-		    col.hom="grey20",
-		    fill.hom="lightblue",
-		    col.het="grey20" ,
-		    fill.het="salmon",
-		    col.np="grey20",
-		    fill.np="grey60",
-		    show.state=TRUE,
-		    cex.state=1,
-		    col.state="blue",
-		    ..., subscripts){
-	panel.grid(v=0, h=4, "grey", lty=2)
-	panel.xyplot(x[1], y[1], col="white", ...) ## set it up, but don't plot
-	is.snp <- is.snp[subscripts]
-	if(!missing(gt)){
-		gt <- gt[subscripts]
-		hets.index <- which(gt == 2)
-		hom.index <- which(gt == 1 | gt == 3)
-		if(all(!c("col", "fill") %in% names(list(...)))){
-			if(any(!is.snp))
-				lpoints(x[!is.snp], y[!is.snp], col=col.np,
-					fill=fill.np, ...)
-			if(length(hom.index) > 0)
-				lpoints(x[hom.index], y[hom.index], col=col.hom,
-					fill=fill.hom, ...)
 
-			if(length(hets.index) > 0)
-				lpoints(x[hets.index], y[hets.index],
-					col=col.het,
-					fill=fill.het, ...)
-		}
-	} else {
-		lpoints(x[!is.snp], y[!is.snp], col=col.np,
-			fill=fill.np, ...)
-		## use whatever col.hom to color SNPs
-		lpoints(x[is.snp], y[is.snp], col=col.hom,
-			fill=fill.hom, ...)
-	}
-	j <- panel.number()
-	st <- start(range)[j]/1e6
-	lrect(xleft=st, xright=end(range)[j]/1e6,
-	      ybottom=-10, ytop=10, ...)
-	if(show.state){
-		## left justify the label to the start of the range
-		y.max <- current.panel.limits()$ylim[2]
-		ltext(st, y.max, labels=paste("state", state(range)[j]),
-		      adj=c(0,1), cex=cex.state, col=col.state)
-	}
-}
 
 
 ##
@@ -879,31 +859,7 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	return(mu)
 }
 
-arrangeSideBySide <- function(object1, object2){
-	grid.newpage()
-	lvp <- viewport(x=0,
-			y=0.05,
-			width=unit(0.50, "npc"),
-			height=unit(0.95, "npc"), just=c("left", "bottom"),
-			name="lvp")
-	pushViewport(lvp)
-	nfigs1 <- length(object1$condlevels[[1]])
-	nfigs2 <- length(object2$condlevels[[1]])
-	stopifnot(length(nfigs1) == length(nfigs2))
-	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
-	object1$layout <- c(1, nfigs1)
-	print(object1, newpage=FALSE, prefix="plot1", more=TRUE)
-	upViewport(0)
-	lvp2 <- viewport(x=0.5,
-			 y=0.05,
-			 width=unit(0.50, "npc"),
-			 height=unit(0.95, "npc"), just=c("left", "bottom"),
-			 name="lvp2")
-	pushViewport(lvp2)
-	pushViewport(dataViewport(xscale=c(0,1), yscale=c(0.05,1), clip="on"))
-	object2$layout <- c(1, nfigs1)
-	print(object2, newpage=FALSE, prefix="plot2", more=TRUE)
-}
+
 
 getTau <- function(TAUP, pos, S){
 	taus <- exp(-2*diff(pos)/TAUP)
@@ -1044,9 +1000,10 @@ artificialData <- function(states, nmarkers){
 			copyNumber=as.matrix(dat),
 			call=as.matrix(genotypes))
 	assayDataElement(oligoSet, "baf") <- b
-	fData(oligoSet)$position <- pos
+	##df <- data.frame(position=pos, chromosome=rep(1L, length(pos)), isSnp=
+	fData(oligoSet)$position <- as.integer(pos)
 	fData(oligoSet)$chromosome <- 1L
-	fData(oligoSet)$isSnp <- 1L
+	fData(oligoSet)$isSnp <- TRUE
 	return(oligoSet)
 }
 
@@ -1152,71 +1109,44 @@ hmmOneSample <- function(filename,
 	snplist <- split(issnp, arm)
 	armlist <- split(arm, arm)
 	##
-	##transitionPr <- lapply(poslist, function(x, TAUP) exp(-2 * diff(x)/TAUP), TAUP=TAUP)
-	##states <- c("hom-del", "hem-del", "normal", "roh", "single-dup", "double-dup")
-	emitlrr <- foreach(object=lrrlist,
-			   is.snp=snplist,
-			   chrom=chrlist,
-			   .packages="VanillaICE") %dopar% {
-				   cnEmission(object=object,
-					      k=medianWindow,
-					      cnStates=cnStates,
-					      is.log=TRUE,
-					      is.snp=is.snp,
-					      normalIndex=3,
-					      chrom=chrom)
-			   }
-##	bsSet2 <- bsSet[match(idlist[[1]], featureNames(bsSet)), ]
-##	bf <- VanillaICE:::bafEmission(object=baf(bsSet2), is.snp=isSnp(bsSet2),
-##				       prOutlier=1e-3, p.hom=0.6) ## p.hom is critical
-##	cn <- VanillaICE:::cnEmission(object=lrr(bsSet2),
-##				      k=5,
-##				      cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
-##				      is.snp=isSnp(bsSet2),
-##				      normalIndex=3,
-##				      is.log=TRUE)
-##	emitlrr <- cnEmission(object=lrrlist[[i]],
-##			      k=medianWindow,
-##			      cnStates=cnStates,
-##			      is.log=TRUE,
-##			      is.snp=as.logical(snplist[[i]]),
-##			      normalIndex=3,
-##			      chrom=chrlist[[i]])
-	emitbaf <- foreach(object=baflist,
-			   is.snp=snplist,
-			   pb=pblist,
-			   .packages="VanillaICE") %do% {
-				   bafEmission(object=object,
-					       is.snp=is.snp,
-					       p.hom=p.hom,
-					       prOutlier=prOutlier,
-					       pb=pb)
-			   }
-##	tmp <- bafEmission(object=baflist[[i]],
-##			   is.snp=snplist[[i]],
-##			   p.hom=p.hom,
-##			   prOutlier=prOutlier,
-##			   pb=pblist[[i]])
-##	emitbaf <- bafEmission(object=baflist[[i]],
-##			       is.snp=snplist[[i]],
-##			       p.hom=p.hom,
-##			       prOutlier=prOutlier,
-##			       pb=pblist[[i]])
-	log.E <- foreach(lrr=emitlrr, baf=emitbaf)  %do% (lrr+baf)
-	## need centromere locations for hg18
-	####log.initial <- log(rep(1/6, 6))
-	e <- 1e-5
+	emitb <- foreach(object=baflist,
+			 is.snp=snplist,
+			 .packages="VanillaICE") %do% {
+				 bafEmission(object=object,
+					     is.snp=is.snp,
+					     prOutlier=prOutlier,
+					     p.hom=p.hom, ...)
+			 }
+	emitr <- foreach(object=lrrlist,
+			 is.snp=snplist,
+			 chrom=chrlist,
+			 .packages="VanillaICE") %do% {
+				 cnEmission(object=object,
+					    is.snp=is.snp,
+					    prOutlier=prOutlier,
+					    cnStates=cnStates,
+					    is.log=TRUE,
+					    normalIndex=3,
+					    chrom=chrom, ...)
+			 }
+	emitlist <- foreach(b=emitb, r=emitr) %do% (b[, 1, ] + r[, 1, ])
+	e <- .01
 	log.initial <- rep(e, 6)
-	log.initial[normalIndex] <- 1-5*e
+	log.initial[3] <- 1-5*e
 	log.initial <- log(log.initial)
-	rdl <- foreach(i=seq_along(lrrlist), .packages="VanillaICE") %dopar% viterbi3(arm=armlist[[i]],
-			      pos=poslist[[i]],
-			      chrom=chrlist[[i]],
-			      LE=log.E[[i]][, 1, ],
-			      log.initial=log.initial,
-			      states=1:6,
-			      id=basename(filename),
-			      TAUP=1e8)
+	rdl <- foreach(arm=armlist,
+		       pos=poslist,
+		       chrom=chrlist,
+		       LE=emitlist) %dopar% {
+			       viterbi3(LE=LE,
+					arm=arm,
+					pos=pos,
+					chrom=chrom,
+					log.initial=log.initial,
+					states=1:6,
+					id=basename(filename),
+					TAUP=TAUP)
+		       }
 	rd <- stackRangedData(rdl)
 	return(rd)
 }
@@ -1253,4 +1183,21 @@ hmm3 <- function(filenames, cdfname, universe=c("hg18", "hg19", ""),
 	}
 	rdHmm <- stackRangedData(rd)
 	return(rdHmm)
+}
+
+##---------------------------------------------------------------------------
+##
+## From MinimumDistance
+##
+##---------------------------------------------------------------------------
+tnorm <- function(x, mean, sd, lower=0, upper=1){
+	phi <- function(x, mu, sigma) dnorm(x, mu, sigma)
+	## cdf of standard normal
+	Phi <- function(x, mu, sigma) pnorm(x, mu, sigma)
+	res <- phi(x, mean, sd)/(Phi(upper, mean, sd)-Phi(lower, mean, sd))
+	ind <- which(x < lower | x > upper)
+	if(any(ind)){
+		res[ind] <- 0
+	}
+	res
 }

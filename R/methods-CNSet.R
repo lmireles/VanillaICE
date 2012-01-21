@@ -68,32 +68,4 @@ setMethod("hmm", signature(object="CNSet", hmm.params="HmmOptionList"),
 		  return(rangedData)
 	  })
 
-setMethod("xyplot2", signature(x="formula", data="CNSet", range="RangedDataCNV"),
-	  function(x, data, range, frame=50e3L, ...){
-		  z <- findOverlaps(range, data, maxgap=frame)
-		  mm <- matchMatrix(z)
-		  mm.df <- data.frame(mm)
-		  mm.df$featureNames <- featureNames(data)[mm.df$subject]
-		  marker.index <- unique(mm.df$subject)
-		  ##marker.index <- featuresInRange(data, rd, FRAME=frame)
-		  sample.index <- match(unique(sampleNames(range)), sampleNames(data))
-		  data <- data[marker.index, sample.index]
-		  ## now we need to know the indices of
-		  ## each range after subsetting
-		  ## mm.df$subject <- match(mm.df$featureNames, featureNames(data))
-		  ## we assume that each range is from a different sample
-		  oligoset <- as(data, "oligoSnpSet")
-		  df <- as(oligoset, "data.frame")
-		  df$range.index <- mm.df$query
-		  xyplot(x, df,
-			 range=range,
-			 gt=df$gt,
-			 is.snp=df$is.snp,
-			 ...)
-	  })
 
-
-##setMethod("xyplot", signature(x="formula", data="CNSet"),
-##	  function(x, data, ...){
-##		  xyplot2(x, data, ...)
-##})

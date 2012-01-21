@@ -145,68 +145,6 @@ setMethod("sd", signature(x="oligoSnpSet"),
 		  getSds(x, na.rm=TRUE)
 	   })
 
-setMethod("xyplot2", signature(x="formula",
-			       data="gSet",
-			       range="RangedDataCNV"),
-	  function(x, data, range, frame=50e3L, ...){
-		  ## for now
-		  ##if(nrow(range) > 1) frame <- 0L
-		  dfList <- vector("list", nrow(range))
-		  for(i in seq_len(nrow(range))){
-			  rm <- findOverlaps(range[i, ], featureData(data), maxgap=frame) ## RangesMatching
-			  mm <- matchMatrix(rm)
-			  mm.df <- data.frame(mm)
-			  mm.df$featureNames <- featureNames(data)[mm.df$subject]
-			  marker.index <- mm.df$subject
-			  sample.index <- match(sampleNames(range)[i], sampleNames(data))
-			  if(any(is.na(sample.index))) stop("sampleNames in RangedData do not match sampleNames in ", class(data), " object")
-			  sample.index <- unique(sample.index)
-			  data2 <- data[marker.index, sample.index]
-			  mm.df$subject <- match(mm.df$featureNames, featureNames(data2))
-			  ##
-			  ## coersion to data.frame
-			  ##
-			  df <- as(data2, "data.frame")
-			  df$range <- rep(i, nrow(df))##mm.df$query
-			  dfList[[i]] <- df
-		  }
-		  if(length(dfList) == 1) {
-			  df <- dfList[[1]]
-		  } else{
-			  df <- do.call("rbind", dfList)
-		  }
-		  df$range <- factor(df$range, ordered=TRUE, levels=unique(df$range))
-		  df$id <- factor(df$id, ordered=TRUE, levels=unique(df$id))
-		  if("return.data.frame" %in% names(list(...))){
-			  return.df <- list(...)[["return.data.frame"]]
-			  if(return.df) return(df)
-		  }
-		  list.x <- as.character(x)
-		  i <- grep("|", list.x, fixed=TRUE)
-		  if(length(i) > 0){
-			  zvar <- list.x[[i]]
-			  zvar <- strsplit(zvar, " | ", fixed=T)[[1]][[2]]
-			  if(zvar == "range"){
-				  tmp <- tryCatch(df$range <- mm.df$query, error=function(e) NULL)
-			  }
-		  }
-		  if("gt" %in% colnames(df)){
-			  xyplot(x, df,
-				 range=range,
-				 id=df$id,
-				 gt=df$gt,
-				 is.snp=df$is.snp,
-				 ...)
-		  } else {
-			  xyplot(x, df,
-				 id=df$id,
-				 range=range,
-				 is.snp=df$is.snp,
-				 ...)
-		  }
-	  })
-
-
 setMethod("cnEmission", signature(object="oligoSnpSet"),
 	  function(object, stdev, k=5, cnStates, is.log, is.snp, normalIndex, ...){
 		  ##fn <- featureNames(object)
