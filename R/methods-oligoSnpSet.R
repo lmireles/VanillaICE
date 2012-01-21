@@ -146,7 +146,7 @@ setMethod("sd", signature(x="oligoSnpSet"),
 	   })
 
 setMethod("xyplot2", signature(x="formula",
-			       data="eSet",
+			       data="gSet",
 			       range="RangedDataCNV"),
 	  function(x, data, range, frame=50e3L, ...){
 		  ## for now
@@ -163,6 +163,9 @@ setMethod("xyplot2", signature(x="formula",
 			  sample.index <- unique(sample.index)
 			  data2 <- data[marker.index, sample.index]
 			  mm.df$subject <- match(mm.df$featureNames, featureNames(data2))
+			  ##
+			  ## coersion to data.frame
+			  ##
 			  df <- as(data2, "data.frame")
 			  df$range <- rep(i, nrow(df))##mm.df$query
 			  dfList[[i]] <- df
