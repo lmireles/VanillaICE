@@ -1,3 +1,5 @@
+## Note that the tests are run on the scripts in the installed directly.
+## Need to run 'make' to test any changes to the files in inst/unitTests
 TOP=../..
 PKG=${shell cd ${TOP};pwd}
 SUITE=doRUnit.R
@@ -14,3 +16,4 @@ test: # Run unit tests
 	export RUNITFILEPATTERN="$(file)";\
 	cd ${TOP}/tests;\
 	R --vanilla --slave < ${SUITE}
+

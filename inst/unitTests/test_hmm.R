@@ -1,20 +1,27 @@
 test_hmm_oligoSnpSet <- function(){
-	set.seed(1)
+	## Results are sensitive to the seed, and differs between the unit test and my
 	states <- as.integer(c(3, 4, 3, 5, 3, 2, 3, 2, 3, 2, 3))
 	nmarkers <- as.integer(c(996, 102, 902, 50, 2467, 102, 1898,
-				 99, 900, 10, 160))
-	oligoset <- VanillaICE:::artificialData(states, nmarkers)
+				 99, 900, 20, 160))
+	statepath <- rep(states, nmarkers)
+	if(FALSE){
+		oligoset <- VanillaICE:::artificialData(states, nmarkers)
+		save(oligoset, file="../extdata/oligosetForUnitTest.rda")
+	} else {
+		path <- system.file("extdata", package="VanillaICE")
+		load(file.path(path, "oligosetForUnitTest.rda"))
+	}
 	hmmOpts <- hmm.setup(oligoset, is.log=FALSE)
 	fit <- hmm(oligoset, hmmOpts, k=3)
-	checkIdentical(state(fit), states)
-	## check that the breakpoints are close
-	checkTrue(all.equal(coverage2(fit), nmarkers, tolerance=0.01))
+	checkTrue(identical(state(fit), states))
+	checkEquals(coverage2(fit), nmarkers, tolerance=0.01)
+	##checkIdentical(coverage2(fit), as.integer(c(996, 102, 902, 54, 2463, 102, 1898, 99, 901, 19, 160)))
 
 	hmmOpts <- hmm.setup(oligoset, is.log=FALSE)
 	## fit is sensitive to choice of prOutlier and p.hom
 	fit2 <- hmm(oligoset, hmmOpts, use.baf=TRUE, prOutlier=1e-3, p.hom=0.95, k=3)
 	checkIdentical(state(fit2), states)
-	checkTrue(all.equal(coverage2(fit2), nmarkers, tolerance=0.01))
+	checkTrue(isTRUE(all.equal(coverage2(fit2), nmarkers, tolerance=0.01)))
 
 	cnemit <- VanillaICE:::cnEmission(object=copyNumber(oligoset),
 					  cnStates=c(0, 1, 2, 2, 3, 4),
@@ -39,7 +46,10 @@ test_hmm_oligoSnpSet <- function(){
 				     TAUP=1e8)
 	rd <- VanillaICE:::stackRangedData(rdl)
 	checkIdentical(state(rd), states)
-	checkTrue(all.equal(coverage2(rd), nmarkers, tolerance=0.01))
+	checkTrue(isTRUE(all.equal(coverage2(rd), nmarkers, tolerance=0.01)))
+}
+
+internalTest_hmm <- function(){
 }
 
 
