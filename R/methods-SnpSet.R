@@ -107,14 +107,5 @@ setMethod("bafEmission", signature(object="SnpSet"),
 		  return(log.emit)
 	  })
 
-setMethod("xyplot", signature(x="formula", data="SnpSet"),
-	  function(x, data, ...){
-		  if("range" %in% names(list(...))){
-			  xyplot2(x, data, ...)
-		  } else {
-			  callNextMethod()
-		  }
-})
-
 setMethod("baf", signature(object="SnpSet"), function(object) assayDataElement(object, "baf"))
 
