@@ -2,8 +2,10 @@
 \alias{xyplot}
 \alias{xyplot2}
 \alias{xyplot,formula,SnpSet-method}
+\alias{xyplot,formula,BeadStudioSet-method}
 \alias{xyplot2,formula,CNSet,RangedDataCNV-method}
-\alias{xyplot2,formula,eSet,RangedDataCNV-method}
+\alias{xyplot2,formula,gSet,RangedDataCNV-method}
+\alias{xyplot2,formula,SnpSet,RangedDataCNV-method}
 \title{Plot copy number and physical position for a set of genomic intervals.}
 \description{Plot copy number and physical position given by a
   \code{CNSet} object for a set of genomic intervals stored in a
@@ -15,8 +17,10 @@ xyplot2(x, data, range, frame=50e3L, ...)
 }
 \arguments{
   \item{x}{A \code{formula}.  Currently, the formula must be one of \code{cn~x},
-    \code{cn ~ x | id} or \code{cn ~ x | range}.}
-  \item{data}{A \code{CNSet} or \code{SnpSet} object.}
+    \code{cn ~ x | id} or \code{cn ~ x | range} when \code{data} is a
+    \code{CNSet}. If \code{data} is a \code{BeadStudioSet}, the formula
+    has the form \code{lrr ~ x| range} or \code{baf ~ x | range}.}
+  \item{data}{A \code{CNSet}, \code{BeadStudioSet}, or \code{SnpSet} object.}
   \item{\dots}{A \code{RangedDataCNV} object must be passed by the name
     'range'. Arguments for \code{xyplot} are passed to
     \code{xyplot2}. Additional arguments are passed to \code{xypanel} and \code{panel.xyplot}.}

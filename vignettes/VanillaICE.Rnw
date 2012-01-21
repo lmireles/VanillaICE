@@ -198,7 +198,7 @@ Next we plot the data for chromosome 1 and overlay the predictions
 from the hidden markov model. See Figure \ref{fig:chr1}.
 
 <<fig2, fig=TRUE, width=8, echo=FALSE, include=FALSE>>=
-if(require(library(RColorBrewer))){
+if(require(RColorBrewer)){
 	cols <- brewer.pal(5, "YlOrBr")[2:5]
 } else cols <- rainbow(n=5)
 chr1 <- oligoSet[chromosome(oligoSet)==1,]
@@ -385,7 +385,7 @@ snpSet <- new("SnpSet",
 	      call=locusLevelData[["genotypes"]],
 	      callProbability=locusLevelData[["crlmmConfidence"]],
 	      annotation=locusLevelData[["platform"]])
-featureData(snpSet) <- addFeatureAnnotation(snpSet)
+featureData(snpSet) <- GenomeAnnotatedDataFrameFrom(assayData(snpSet), locusLevelData[["platform"]])
 snpSet <- snpSet[chromosome(snpSet) < 3, ]
 hmmOpts <- hmm.setup(snpSet)
 fit.gt <- hmm(snpSet, hmmOpts)

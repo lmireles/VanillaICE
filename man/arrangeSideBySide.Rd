@@ -26,7 +26,7 @@ arrangeSideBySide(object1, object2)
 }
   \item{object2}{
     A trellis object (e.g., a trellis object of the B allele frequencies).
-}
+  }
 }
 
 
