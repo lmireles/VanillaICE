@@ -335,7 +335,6 @@ bafEmissionFromMatrix <- function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ..
 }
 
 simulateSingleDupBaf <- function(b, is.snp, from, to, ...){
-	require(msm)
 	stopifnot(is(b, "numeric"))
 	names(b) <- NULL
 	b.all <- b
@@ -358,17 +357,17 @@ simulateSingleDupBaf <- function(b, is.snp, from, to, ...){
 
 	z <- sample(1:4, size=length(index), replace=TRUE, prob=c(q3, 3*pq2, 3*p2q, p3))
 	nZ <- table(z)
-	d1 <- msm::rtnorm(length(index), 0, sds[1], lower=0, upper=1)
-	d2 <- msm::rtnorm(length(index), 1/3, sds[1], lower=0, upper=1)
-	d3 <- msm::rtnorm(length(index), 2/3, sds[1], lower=0, upper=1)
-	d4 <- msm::rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1/3, sds[1], lower=0, upper=1)
+	d3 <- rtnorm(length(index), 2/3, sds[1], lower=0, upper=1)
+	d4 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
 	simB <- rep(NA, length(index))
 	simB[z==1] <- sample(d1, nZ[1])
 	simB[z==2] <- sample(d2, nZ[2])
 	simB[z==3] <- sample(d3, nZ[3])
 	simB[z==4] <- sample(d4, nZ[4])
 	b.all[index] <- simB
-	##het <- msm::rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
 	return(b.all)
 }
 
@@ -401,13 +400,12 @@ simulateSingleDupLrr <- function(r, is.snp, cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.
 	simR[z==2] <- sample(d2, nZ[2])
 	simB[z==3] <- sample(d3, nZ[3])
 	simB[z==4] <- sample(d4, nZ[4])
-	##het <- msm::rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
 	return(r.all)
 }
 
 
 simulateDoubleDupBaf <- function(b, is.snp, from, to, ...){
-	require(msm)
 	stopifnot(is(b, "numeric"))
 	names(b) <- NULL
 	b.all <- b
@@ -430,11 +428,11 @@ simulateDoubleDupBaf <- function(b, is.snp, from, to, ...){
 	index <- seq(from, to, by=1)
 	z <- sample(1:5, size=length(index), replace=TRUE, prob=c(q4, pq3, p2q2, p3q, p4))
 	nZ <- table(z)
-	d1 <- msm::rtnorm(length(index), 0, sds[1], lower=0, upper=1)
-	d2 <- msm::rtnorm(length(index), 1/4, sds[1], lower=0, upper=1)
-	d3 <- msm::rtnorm(length(index), 1/2, sds[2], lower=0, upper=1)
-	d4 <- msm::rtnorm(length(index), 3/4, sds[1], lower=0, upper=1)
-	d5 <- msm::rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1/4, sds[1], lower=0, upper=1)
+	d3 <- rtnorm(length(index), 1/2, sds[2], lower=0, upper=1)
+	d4 <- rtnorm(length(index), 3/4, sds[1], lower=0, upper=1)
+	d5 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
 	simB <- rep(NA, length(index))
 	simB[z==1] <- sample(d1, nZ[1])
 	simB[z==2] <- sample(d2, nZ[2])
@@ -442,7 +440,7 @@ simulateDoubleDupBaf <- function(b, is.snp, from, to, ...){
 	simB[z==4] <- sample(d4, nZ[4])
 	simB[z==5] <- sample(d5, nZ[5])
 	b.all[index] <- simB
-	##het <- msm::rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
 	return(b.all)
 }
 
@@ -450,7 +448,6 @@ simulateSingleDelBaf <- function(b, is.snp, from, to, ...){
 	index <- seq(from, to, by=1)
 	stopifnot(all(diff(index) > 0))
 	stopifnot(length(index) > 1)
-	require(msm)
 	stopifnot(is(b, "numeric"))
 	names(b) <- NULL
 	b.all <- b
@@ -469,13 +466,13 @@ simulateSingleDelBaf <- function(b, is.snp, from, to, ...){
 
 	z <- sample(1:2, size=length(index), replace=TRUE, prob=c(p, q))
 	nZ <- table(z)
-	d1 <- msm::rtnorm(length(index), 0, sds[1], lower=0, upper=1)
-	d2 <- msm::rtnorm(length(index), 1, sds[3], lower=0, upper=1)
+	d1 <- rtnorm(length(index), 0, sds[1], lower=0, upper=1)
+	d2 <- rtnorm(length(index), 1, sds[3], lower=0, upper=1)
 	simB <- rep(NA, length(index))
 	simB[z==1] <- sample(d1, nZ[1])
 	simB[z==2] <- sample(d2, nZ[2])
 	b.all[index] <- simB
-	##het <- msm::rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
+	##het <- rtnorm(length(index), 0.5, sds[2], lower=0, upper=1)
 	return(b.all)
 }
 
