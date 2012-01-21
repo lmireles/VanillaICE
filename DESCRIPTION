@@ -20,6 +20,7 @@ Collate:  AllGenerics.R
 	  methods-CNSet.R
 	  methods-matrix.R
 	  methods-SnpSet.R
+	  lattice-methods.R
 	  functions.R
 	  utils.R
 	  zzz.R
