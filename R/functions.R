@@ -116,20 +116,26 @@ viterbi.wrapper <- function(log.emission,
 		    altered2altered=altered2altered,##c3
 		    as.integer(normalIndex),
 		    as.double(pAA))##normalState
-	res <- .C("viterbi",
-	   log.emission=tmp[[1]],
-	   log.initial=tmp[[2]],
-	   tau=tmp[[3]],
-	   arm=tmp[[4]],
-	   S=tmp[[5]],
-	   T=tmp[[6]],
-	   viterbiSeq=tmp[[7]],
-	   delta=tmp[[8]],
-	   N2A=tmp[[9]],
-	   A2N=tmp[[10]],
-	   A2A=tmp[[11]],
-	   normalIndex=tmp[[12]],
-	   pAA=tmp[[13]])  ##can verify that the transition prob. matrix is correct (for last snp)
+##	res <- .C("viterbi",
+	backwardVar <- tmp[[8]]
+	res <- .C("viterbi2",
+		  log.emission=tmp[[1]],
+		  log.initial=tmp[[2]],
+		  tau=tmp[[3]],
+		  arm=tmp[[4]],
+		  S=tmp[[5]],
+		  T=tmp[[6]],
+		  viterbiSeq=tmp[[7]],
+		  delta=tmp[[8]],
+		  backwardVar=backwardVar,
+		  N2A=tmp[[9]],
+		  A2N=tmp[[10]],
+		  A2A=tmp[[11]],
+		  normalIndex=tmp[[12]],
+		  pAA=tmp[[13]])  ##can verify that the transition prob. matrix is correct (for last snp)
+##	all(res$backwardVar==0)
+##	b <- matrix(res$backwardVar, T, S, byrow=F)
+	return(res)
 }
 
 .getArm <- function(chrom, pos){
@@ -918,20 +924,20 @@ viterbi3 <- function(arm, pos, chrom, LE, log.initial,
 	qhat <- rep(0L, T)
 	delta <- matrix(as.double(0), nrow=T, ncol=S)
 	taus <- getTau(TAUP, pos, S)
-	viterbiResults <- VanillaICE:::viterbi.wrapper(log.emission=LE,
-						       log.initial=log.initial,
-						       transitionPr=taus,
-						       arm=as.integer(as.factor(arm)),
-						       S=S,
-						       T=T,
-						       result=qhat,
-						       delta=delta,
-						       normal2altered=1,
-						       altered2normal=1,
-						       altered2altered=1,
-						       normalIndex=normalIndex,
-						       pAA=rep(0, S^2))
-	rd <- VanillaICE:::computeLoglik(viterbiResults,
+	viterbiResults <- viterbi.wrapper(log.emission=LE,
+					  log.initial=log.initial,
+					  transitionPr=taus,
+					  arm=as.integer(as.factor(arm)),
+					  S=S,
+					  T=T,
+					  result=qhat,
+					  delta=delta,
+					  normal2altered=1,
+					  altered2normal=1,
+					  altered2altered=1,
+					  normalIndex=normalIndex,
+					  pAA=rep(0, S^2))
+	rd <- computeLoglik(viterbiResults,
 			    log.initial=log.initial,
 			    log.emission=LE,
 			    states=states,
