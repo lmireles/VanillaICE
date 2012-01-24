@@ -220,7 +220,7 @@ void viterbi2(double *pBeta, /* emission prob */
   /** double *pAA, *pDeltaTempSum, Pstar, *tp; */
   double *pDeltaTempSum, Pstar, *tp;
   double *pBackTempSum;
-  int i,j,t;
+  int i,j,t,tt;
   int nRows, nCols, *pPsi;
   int NS;
 
@@ -240,11 +240,15 @@ void viterbi2(double *pBeta, /* emission prob */
   /** what is this notation? *(pDelta + nrows*j) C uses vectors and
       not matrices.  so the Nth row in pDelta is set to initialP + the
       emission probability for the Nth row*/
+  double scalingFactorSum;
+  scalingFactorSum=0;
   for (j=0; j<nCols; ++j)
   {
     *(pDelta + nRows*j) = initialP[j] * *(pBeta + nRows*j);
     *(pPsi + nRows*j) = 0;
+    scalingFactorSum=scalingFactorSum+*(pDelta+nRows*j);
   }
+  scalingFactor[0]=1/scalingFactorSum;
 
   /*RS: For the backwards variable, we need a counter (k) that goes in
     the opposite direction of t.  I think it could be defined as a
@@ -332,6 +336,7 @@ void viterbi2(double *pBeta, /* emission prob */
 	      *(pAA + offset) =  *(pAA + offset);
 	    }
 	}
+      scalingFactorSum=0.0;
       for (j=0; j<nCols; ++j)
 	{
 	  double maxDeltaTempSum;
@@ -349,6 +354,21 @@ void viterbi2(double *pBeta, /* emission prob */
 	  getIndexAndMaxVal( (double *)(pDeltaTempSum), nCols, &maxDeltaTempSum, &maxDeltaSumIdx);
 	  *(pPsi + j * nRows  + t) = maxDeltaSumIdx;
 	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
+	  /* rescale pDelta */
+	  /* (Rabiner eq 91)  */
+	  scalingFactorSum=scalingFactorSum + (double *)(pDelta + j*nRows +t);
+	}
+      scalingFactor[t] = 1/scalingFactorSum;
+      double tmpC, tmp;
+      tmpC=1.0;
+      for(j=0; j<nCols; ++j)
+	{
+	  for(tt=0;tt<t;++tt)
+	    {
+	      tmpC=tmpC*scalingFactor[tt];
+	    }
+	  /* reassign the rescaled value (Rabiner eq 93a)  */
+	  *(pDelta + j*nrows +t) = tmpC * (double *)(pDelta + j*nrows + t);
 	}
     }
 
