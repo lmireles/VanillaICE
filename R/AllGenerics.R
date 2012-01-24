@@ -8,10 +8,9 @@ setGeneric("hmm2", function(object, hmm.params, use.baf=FALSE, k=5,  ...) standa
 ##setGeneric("snpsetClass", function(object) standardGeneric("snpsetClass"))
 ##setGeneric("scaleSds", function(object) standardGeneric("scaleSds"))
 ##setGeneric("emit", function(object, hmm.params) standardGeneric("emit"))
-setGeneric("cnEmission", function(object, stdev, k=5, cnStates,
-				  is.log, is.snp, normalIndex, verbose=TRUE, ...) standardGeneric("cnEmission"))
+setGeneric("cnEmission", function(object, stdev, ...) standardGeneric("cnEmission"))
 setGeneric("gtEmission", function(object, hmm.params, gt.conf, is.snp, cdfName, ...) standardGeneric("gtEmission"))
-setGeneric("bafEmission", function(object, is.snp, cdfName, prOutlier=1e-3, p.hom=0.95, ...) standardGeneric("bafEmission"))
+setGeneric("bafEmission", function(object, ...) standardGeneric("bafEmission"))
 
 setGeneric("sd", useAsDefault=function(x, na.rm=FALSE) stats::sd(x, na.rm))
 setGeneric("xyplot2", function(x, data, range, frame=50e3L, ...) standardGeneric("xyplot2"))
