@@ -42,7 +42,7 @@ setMethod("hmm", signature(object="oligoSnpSet", hmm.params="HmmOptionList"),
 ##		  if("k" %in% names(list(...))){
 ##			  k <- list(...)[["k"]]
 ##		  } else k <- 3
-		  if(v2 > 0)  message("Using a running median of ", k, " markers to estimate the outlier probability.")
+		  ##if(v2 > 0)  message("Using a running median of ", k, " markers to estimate the outlier probability.")
 		  is.ordered <- checkOrder(object)
 		  if(!is.ordered) object <- order(object)
 		  marker.index.list <- split(seq(length=nrow(object)), chromosome(object))

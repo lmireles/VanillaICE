@@ -209,8 +209,13 @@ void viterbi2(double *pBeta, /* emission prob */
 	      double *c2,
 	      double *c3,
 	      int *normalState,
-	      double *pAA)  /* transition prob matrix*/
+	      double *pAA,   /* transition prob matrix*/
+	      double *scalingFactor)
 {
+  /* *************************************************************************** */
+  /*  : ASSUME pBeta is on probability scale (not log scale) */
+  /*  :  changes to pDelta throughout */
+  /* *************************************************************************** */
   /**  RS double *pDelta, *pAA, *pDeltaTempSum, Pstar; */
   /** double *pAA, *pDeltaTempSum, Pstar, *tp; */
   double *pDeltaTempSum, Pstar, *tp;
@@ -237,7 +242,7 @@ void viterbi2(double *pBeta, /* emission prob */
       emission probability for the Nth row*/
   for (j=0; j<nCols; ++j)
   {
-    *(pDelta + nRows*j) = initialP[j] + *(pBeta + nRows*j);
+    *(pDelta + nRows*j) = initialP[j] * *(pBeta + nRows*j);
     *(pPsi + nRows*j) = 0;
   }
 
@@ -324,7 +329,7 @@ void viterbi2(double *pBeta, /* emission prob */
 		    }
 		}
 	      /* *(pAA + offset) = log ( *(pAA + offset) * *(tau_scale + offset) );*/
-	      *(pAA + offset) = log ( *(pAA + offset) );
+	      *(pAA + offset) =  *(pAA + offset);
 	    }
 	}
       for (j=0; j<nCols; ++j)
@@ -338,12 +343,12 @@ void viterbi2(double *pBeta, /* emission prob */
 	     expressed as pAA + nCols*j */
 	  for (i=0; i<nCols; ++i)
 	    {
-	      pDeltaTempSum[i] = pAA[j * nCols + i] + pDelta[(t-1) + i * nRows];
+	      pDeltaTempSum[i] = pAA[j * nCols + i] * pDelta[(t-1) + i * nRows];
 	    }
 	  /* Needs update */
 	  getIndexAndMaxVal( (double *)(pDeltaTempSum), nCols, &maxDeltaTempSum, &maxDeltaSumIdx);
 	  *(pPsi + j * nRows  + t) = maxDeltaSumIdx;
-	  *(pDelta + j*nRows + t) = maxDeltaTempSum + *(pBeta + j*nRows + t);
+	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
 	}
     }
 

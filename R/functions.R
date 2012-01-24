@@ -103,8 +103,8 @@ viterbi.wrapper <- function(log.emission,
 			    altered2altered=1,
 			    normalIndex,
 			    pAA){
-	tmp <- list(as.matrix(as.double(as.matrix(log.emission))),##beta
-		    as.double(as.matrix(log.initial)),##initialP
+	tmp <- list(as.matrix(as.double(as.matrix(exp(log.emission)))),##beta
+		    as.double(as.matrix(exp(log.initial))),##initialP
 		    as.matrix(as.double(transitionPr)),
 		    as.integer(arm),##arm
 		    as.integer(S),##number of states
@@ -132,7 +132,8 @@ viterbi.wrapper <- function(log.emission,
 		  A2N=tmp[[10]],
 		  A2A=tmp[[11]],
 		  normalIndex=tmp[[12]],
-		  pAA=tmp[[13]])  ##can verify that the transition prob. matrix is correct (for last snp)
+		  pAA=tmp[[13]],
+		  scalingFactor=as.numeric(rep(0, T)))  ##can verify that the transition prob. matrix is correct (for last snp)
 ##	all(res$backwardVar==0)
 ##	b <- matrix(res$backwardVar, T, S, byrow=F)
 	return(res)
