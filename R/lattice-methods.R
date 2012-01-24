@@ -108,6 +108,15 @@ setMethod("xyplot", signature(x="formula", data="SnpSet"),
 		  }
 })
 
+setMethod("xyplot", signature(x="formula", data="BeadStudioSet"),
+	  function(x, data, ...){
+		  if("range" %in% names(list(...))){
+			  xyplot2(x, data, ...)
+		  } else {
+			  callNextMethod()
+		  }
+})
+
 my.xypanel <- function(x, y,
 		       x0, x1, chr.size,
 		       col, border, coverage,
@@ -157,9 +166,10 @@ xypanel <- function(x, y,
 		    show.state=TRUE,
 		    cex.state=1,
 		    col.state="blue",
+		    cex.pch=0.3,
 		    ..., subscripts){
 	panel.grid(v=0, h=4, "grey", lty=2)
-	panel.xyplot(x[1], y[1], col="white", ...) ## set it up, but don't plot
+	panel.xyplot(x[1], y[1], col="white", cex=cex.pch, ...) ## set it up, but don't plot
 	is.snp <- is.snp[subscripts]
 	if(!missing(gt)){
 		gt <- gt[subscripts]
@@ -168,22 +178,22 @@ xypanel <- function(x, y,
 		if(all(!c("col", "fill") %in% names(list(...)))){
 			if(any(!is.snp))
 				lpoints(x[!is.snp], y[!is.snp], col=col.np,
-					fill=fill.np, ...)
+					fill=fill.np, cex=cex.pch, ...)
 			if(length(hom.index) > 0)
 				lpoints(x[hom.index], y[hom.index], col=col.hom,
-					fill=fill.hom, ...)
+					fill=fill.hom, cex=cex.pch, ...)
 
 			if(length(hets.index) > 0)
 				lpoints(x[hets.index], y[hets.index],
 					col=col.het,
-					fill=fill.het, ...)
+					fill=fill.het, cex=cex.pch, ...)
 		}
 	} else {
 		lpoints(x[!is.snp], y[!is.snp], col=col.np,
-			fill=fill.np, ...)
+			fill=fill.np, cex=cex.pch, ...)
 		## use whatever col.hom to color SNPs
 		lpoints(x[is.snp], y[is.snp], col=col.hom,
-			fill=fill.hom, ...)
+			fill=fill.hom, cex=cex.pch, ...)
 	}
 	j <- panel.number()
 	st <- start(range)[j]/1e6
