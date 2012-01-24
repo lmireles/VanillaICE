@@ -42,6 +42,7 @@ test_hmm_oligoSnpSet <- function(){
 						   normalIndex=3,
 						   is.log=FALSE,
 						   prOutlier=0.01)
+	b <- baf(object)
 	emitb <- VanillaICE:::gtEmission(object, hmm.params)
 	log.beta=emitr+emitb
 	d <- diff(position(object))
@@ -75,35 +76,70 @@ test_hmm_oligoSnpSet <- function(){
 		  normalIndex=3,
 		  pAA=rep(0, S^2))
 	alpha <- exp(matrix(res[["delta"]], T, S))
-	alpha <- alpha/rowSums(alpha) ## now a probability
-	g <- array(NA, dim=c(T, 2, S))## gamma
-	for(s in seq_len(S)){
-		beta1cn <- prOutlier*dunif(cn, MIN.CN, MAX.CN)
-		## need also the BAF emission
-		den <- beta1cn+(1-prOutlier)*dnorm(cn, mus[s], sds)
-		d1 <- beta1cn/den
-		d2 <- 1-d1
-		g[, 1, s] <- alpha[, s] * d1
-		g[, 2, s] <- alpha[, s] * d2
-	}
+	alpha <- alpha/rowSums(alpha, na.rm=T)
+	## lik = -log sum(ct) ,where c is the scaling variable
+	## rescale: has to be within the viterbi algorithm.
+	## use same ct for backward variable
+##	lalpha <- matrix(res[["delta"]], T, S)
+##	ct <- 1/sum(lalpha[1, ])
+##	for(t = 2:T){
+##		ct[t] <- 1/sum(alpha[t, ])
+##		alpha[t, ] <- prod(ct[1:t])*alpha[t, ]
+##	}
+##
+##	alpha <- alpha/rowSums(alpha) ## now a probability
+	g_b <- g_r <- matrix(NA, T, S)## gamma
+##	p.out <- prOutlierBAF
+##	q.out <- 1-p.out
+##	if("pb" %in% names(list(...))){
+##		pb <- list(...)[["pb"]]
+##		pb <- pb/100
+##		pb[is.na(pb)] <- 0.5
+##	} else pb <- rep(0.5, nrow(object))
+	beta.cn_outlier <- matrix(dunif(cn, 0, 5), T, S)
+	p.r <- rep(0.01, S)
+	beta.cn <- exp(emitr[, 1, ])
+	g_r <- alpha*(beta.cn*(1-p.r))/((1-p.r)*beta.cn + p.r*(beta.cn_outlier))
+
+	p.b <- rep(1e-3, S)
+	beta.b_outlier <- matrix(dunif(b, 0, 1), T, S)
+	beta.b <- exp(emitb[,1, ])
+	g_b <- alpha*(beta.b*(1-p.b))/((1-p.b)*beta.b + p.b*(beta.b_outlier))
+
 	## updates
 	## pmix is a 2 x 6 matrix
-	g_1 <- apply(g[, 1, ], 2, sum, na.rm=TRUE)
-	g_2 <- apply(g[, 2, ], 2, sum, na.rm=TRUE)
-	g_pout <- g_1/(g_1+g_2)
-	g_qout <- 1-g_pout
-	## betat <- cnEmission(prOutlier, O)  ## T x 6
-	## gamma <-                          ## T x 2 x 6.  Second dimension is prOutlier
-	## cjk  <-                           ## 2 x 6       prOutlier for each state
-	mubar <- matrix(NA, 2, 6)
-	mubar1.pout <- (g[, 1, 1] * cn)/sum(g[,1,1], na.rm=TRUE)
-	mubar2.qout <- (g[, 2, 1] * cn)/sum(g[, 2, 1], na.rm=TRUE)
+	tmp <- apply(g_r, 2, sum, na.rm=TRUE)
+	tmp2 <- apply(1-g_r, 2, sum, na.rm=TRUE)
+	p.r <- tmp2/(tmp+tmp2)
+
+	tmp <- apply(g_b, 2, sum, na.rm=TRUE)
+	tmp2 <- apply(1-g_b, 2, sum, na.rm=TRUE)
+	p.b <- tmp2/(tmp+tmp2)
+
+	mubar <- rep(NA, 6)
+	for(s in 1:6){
+		mubar[s] <- sum(g_r[, s]*cn, na.rm=TRUE)/sum(g_r[, s], na.rm=TRUE)  ## mean for each t.
+	}
+	if(any(diff(mubar) < 0)){ ## must be ordinal
+		index <- which(diff(mubar) < 0)
+		mubar[index] <- mubar[index+1]
+	}
+	sdsbar <- rep(NA, 6)
+	for(s in 1:6){
+		sdsbar[s] <- sqrt(sum(g_r[, s]*(cn - mubar[s])^2, na.rm=TRUE)/sum(g_r[, s], na.rm=TRUE))
+	}
+	## run viterbi
+	## recomput alpha
+	## reestimate emission probs. with updated mus and updated sds
+	## compute objective function
+	## P(O|lambda is sum of alphas)
 
 
 
-	mu_pout <- apply(g[, 1, ]*cnm, 2, sum,na.rm=TRUE)/g_qout
-	mu_qout <- apply(g[, 2, ]*cnm, 2, sum, na.rm=TRUE)/g_pout
 
+
+	## recompute emission probabilities.
+	## rerun viterbi.
 	o <- findOverlaps(featureData(oligoset), fit[5, ])
 	copyNumber(oligoset)[queryHits(o), ]
 
