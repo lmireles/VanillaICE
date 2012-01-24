@@ -1,23 +1,36 @@
 setMethod("cnEmission", signature(object="matrix"),
 	  function(object, stdev, k=5, cnStates, is.log, is.snp,
-		   normalIndex, verbose=TRUE, chrom, ...){
+		   normalIndex, prOutlierCN=0.01, verbose=TRUE, ...){
 		  cnEmissionFromMatrix(object=object, stdev=stdev,
 				       k=k,
 				       cnStates=cnStates,
 				       is.log=is.log,
 				       is.snp=is.snp,
 				       normalIndex=normalIndex,
+				       prOutlier=prOutlierCN,
 				       verbose=verbose,
-				       chrom=chrom,
 				       ...)
 	  })
 
 cnEmissionFromMatrix <- function(object, stdev, k=5, cnStates,
 				 is.log, is.snp, normalIndex,
-				 verbose=TRUE,
-				 chrom, ...){
+				 prOutlier,
+				 center.by.type=TRUE,
+				 verbose=TRUE, ...){
 	stopifnot(length(cnStates) > 1)
 	stopifnot(is.numeric(cnStates))
+	if(center.by.type){
+		## assume that the polymorphic markers and nonpolymorphic markers have the same median copynumber / log r ratio
+		snp.index <- which(is.snp)
+		mu.snp <- apply(object[snp.index, , drop=FALSE], 2, median)
+		object[snp.index, ] <- sweep(object[snp.index, , drop=FALSE],  2, mu.snp)
+		if(any(!is.snp)){
+			np.index <- which(!is.snp)
+			mu.np <- apply(object[np.index, , drop=FALSE], 2, median)
+			object[np.index, ] <- sweep(object[np.index, , drop=FALSE], 2, mu.np)
+		}
+		object <- object+cnStates[normalIndex]
+	}
 	if(missing(stdev)){
 		stdev <- .getSds(object)
 		## use robust estimate of sample sd
@@ -49,13 +62,21 @@ cnEmissionFromMatrix <- function(object, stdev, k=5, cnStates,
 			if(is(stdev, "matrix")){
 				s <- stdev[snp.index, j]
 			} else s <- stdev[snp.index]
-			mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
-			old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-			prOutlier <- probabilityOutlier(cn, k=k)
-			for(l in seq_along(cnStates)){
+			##mu.snp <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
+			mu.snp=cnStates
+			##old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
+			##
+			## If the variance of the altered states is much bigger than the variance of the normal
+			## state, prOutlier will be near 1 using the approach in the probabilityOutlier function...
+			##
+			##prOutlier <- probabilityOutlier(cn, k=k)
+			for(l in 2:length(cnStates)){
 				e <- (1-prOutlier) * dnorm(x=cn, mean=mu.snp[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
 				emission.cn[snp.index, j, l] <- e
 			}
+			if(is.log){
+				emission.cn[snp.index, j, 1] <- (1-prOutlier)*dunif(cn, MIN.CN, -1) + prOutlier*dunif(cn, MIN.CN, MAX.CN)
+			} else emission.cn[snp.index, j, 1] <- (1-prOutlier)*dunif(cn, MIN.CN, 1) + prOutlier*dunif(cn, MIN.CN, MAX.CN)
 		}
 	}
 	is.np <- !is.snp
@@ -67,12 +88,19 @@ cnEmissionFromMatrix <- function(object, stdev, k=5, cnStates,
 				if(is(stdev, "matrix")){
 					s <- stdev[np.index, j]
 				} else s <- stdev[np.index, j]
-				mu.np <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
+				##mu.np <- updateMu(x=cn, mu=cnStates, sigma=s, normalIndex=normalIndex)
+				mu.np <- cnStates
 				##old.tmp <- tmp <- rep(NA, length(as.numeric(cnStates)))
-				prOutlier <- probabilityOutlier(cn, k=k)
-				for(l in seq_along(cnStates)){
+				##prOutlier <- probabilityOutlier(cn, k=k)
+				##for(l in seq_along(cnStates)){
+				for(l in 2:length(cnStates)){
 					tmp <- (1-prOutlier) * dnorm(x=cn, mean=mu.np[l], sd=s) + prOutlier * dunif(cn, MIN.CN, MAX.CN)
 					emission.cn[np.index, j, l] <- tmp
+				}
+				if(is.log){
+					emission.cn[np.index, j, 1] <- (1-prOutlier)*dunif(x=cn, MIN.CN, -1) + prOutlier*dunif(cn, MIN.CN, MAX.CN)
+				} else {
+					emission.cn[np.index, j, 1] <- (1-prOutlier)*dunif(x=cn, MIN.CN, 1) + prOutlier*dunif(cn, MIN.CN, MAX.CN)
 				}
 			}
 		}
@@ -220,10 +248,10 @@ updateSigma <- function(x, is.snp, nUpdates=10, sigma0){
 }
 
 setMethod("bafEmission", signature(object="matrix"),
-	  function(object, is.snp, prOutlier=1e-3, p.hom=0.95, ...){
+	  function(object, is.snp, prOutlierBAF=1e-3, p.hom=0.95, ...){
 		  bafEmissionFromMatrix(object=object,
 					is.snp=is.snp,
-					prOutlier=prOutlier,
+					prOutlier=prOutlierBAF,
 					p.hom=p.hom,...)
 	  })
 
