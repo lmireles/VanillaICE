@@ -153,22 +153,24 @@ viterbi.wrapper <- function(log.emission,
 	chrAnn <- chromosomeAnnotation
 	uchrom <- unique(SNPchip:::integer2chromosome(chrom))
 	uchrom <- uchrom[!is.na(uchrom)]
+	positionList <- split(as.integer(pos[marker.index]), chrom[marker.index])
 	chromosomeArm <- vector("list", length(uchrom))
-	positionList <- split(pos[marker.index], chrom[marker.index])
 	chr.names <- unique(chrom)
 	chr.names <- as.character(chr.names[!is.na(chr.names)])
 	positionList <- positionList[match(chr.names, names(positionList))]
 	for(i in seq(along=chr.names)){
-		chromosomeArm[[i]] <- as.integer(ifelse(positionList[[i]] <= chrAnn[uchrom[i], "centromereEnd"], 0, 1))
+		chromosomeArm[[i]] <- ifelse(positionList[[i]] <= chrAnn[uchrom[i], "centromereStart"], "p", "q")
 	}
 	chromosomeArm <- unlist(chromosomeArm)
 	chrom <- chrom[marker.index]
-	chromosomeArm <- cumsum(c(0, diff(chromosomeArm) != 0 | diff(chrom) != 0))
-	chromosomeArm <- chromosomeArm+1 ##start at 1
-	res <- rep(NA, length(chrom))
-	res[marker.index] <- chromosomeArm
-	res <- as.integer(res)
-	return(res)
+	chromosomeArm <- chromosomeArm[marker.index]
+	##chromosomeArm <- cumsum(c(0, diff(chromosomeArm) != 0 | diff(chrom) != 0))
+	arm <- paste(chromosomeArm, chrom, sep="")
+	##chromosomeArm <- chromosomeArm+1 ##start at 1
+	##res <- rep(NA, length(chrom))
+	##res[marker.index] <- chromosomeArm
+	##res <- as.integer(res)
+	return(arm)
 }
 
 getChromosomeArm <- function(object){
@@ -340,6 +342,7 @@ viterbi <- function(object,
 ##	##
 ##	## arm can contain NA's for invalid chromosomes or NA's
 	arm <- getChromosomeArm(object)
+	arm <- as.integer(as.factor(arm))
 	normalIndex <- hmm.params$normalIndex##[["normalIndex"]]
 	if(normalIndex < 1 | normalIndex > dim(log.E)[[3]]){
 		stop("normalIndex in hmm.params not valid")
@@ -772,6 +775,7 @@ genotypeEmissionCrlmm <- function(object, hmm.params, gt.conf, cdfName){
 
 ##
 ## AD-HOC
+##
 updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	if(nUpdates==0) return(mu)
 	## assume CN is a vector.  Fit EM independently for each
@@ -780,7 +784,11 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	##
 	## compute the responsibilities
 	##
-	sigma <- sigma[1]
+	##sigma <- sigma[1]
+	L <- length(mu)
+	sigma <- rep(sigma[1], L)
+	sigma[1] <- sigma[1]*2
+	sigma[L] <- sigma[L]*2
 	##pi <- exp(log.initialPr)
 	dup.index <- which(duplicated(mu))
 	S <- length(mu)
@@ -790,7 +798,10 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	} else L <- S
 	## fix normal copy number
 	mu[normalIndex] <- median(x, na.rm=TRUE)
-	pi <- rep(1/L, L)
+	##pi <- rep(1/L, L)
+	e <- 0.9
+	pis <- rep(e, L)
+	pis[-normalIndex] <- (1-e)/(L-1)
 	## fix the sd.  Update the means via em.
 	##gamma <- vector("list", L)
 	gamma <- matrix(NA, length(x), L)
@@ -798,26 +809,25 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 	##num <- vector("list", L-1)
 	num <- matrix(NA, length(x), L)
 	epsilon <- 0.01
+	N <- 1 ## number of standard deviations that states must be separated by
 	for(iter in seq_len(nUpdates)){
 		if(iter > nUpdates) break()
 		for(i in seq_len(L)){
-			den[, i] <- pi[i]*dnorm(x, mean=mu[i], sd=sigma)
+			den[, i] <- pis[i]*dnorm(x, mean=mu[i], sd=sigma[i])
 		}
 		D <- rowSums(den, na.rm=TRUE)
 		for(i in seq_len(L)){
-			num <- den[, i] ##pi[i] * dnorm(x, mu[i], sigma)
+			num <- den[, i] ##pis[i] * dnorm(x, mu[i], sigma)
 			gamma[, i] <- num/D
 		}
 		rs <- rowSums(gamma, na.rm=TRUE)
 		gamma <- gamma/rs
 		total.gamma <- apply(gamma, 2, sum, na.rm=TRUE)
 		##
-		## update the means with contraints
+		## update the means with constraints
 		##
 		mu.new <- rep(NA, length(mu))
-		##mu.new[3] <- mu[3]
 		mu.new[normalIndex] <- mu[normalIndex]
-		##I <- c(1,2, 4, 5)
 		I <- seq_along(mu)[-normalIndex]
 		for(i in I){
 			if(sum(gamma[, i],na.rm=TRUE) < 0.0001) {
@@ -825,29 +835,34 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 				next()
 			}
 			tmp <- sum(gamma[, i] * x, na.rm=TRUE)/total.gamma[i]
+			mu.new[i] <- sum(gamma[, i] * x, na.rm=TRUE)/total.gamma[i]
 			if(i > 1 & i < L){
-				## mu[i-1]+sigma < mu[i] < mu[i+1] - sigma
-				i1 <- tmp < (mu[i-1] + 1.5*sigma)
-				i2 <- tmp > (mu[i+1] - 1.5*sigma)
-				if(i1 | i2){
-					if(i1)## & tmp < (mu[i+1] -sigma)){
-						mu.new[i] <- mu[i-1]+1.5*sigma
-					if(i2)
-						mu.new[i] <- mu[i+1]-1.5*sigma
-				} else mu.new[i] <- tmp
+				i1 <- tmp < (mu[i-1] + N*sigma[i])
+				i2 <- tmp > (mu[i+1] - N*sigma[i])
+				if(i1 & i2) {
+					tmp <- mean(c(mu[i-1], mu[i+1]))
+				} else {
+					if(i1 | i2){
+						if(i1)## & tmp < (mu[i+1] -sigma)){
+							mu.new[i] <- mu[i-1]+N*sigma[i]
+						if(i2)
+							mu.new[i] <- mu[i+1]-N*sigma[i]
+					} else mu.new[i] <- tmp
+				}
 			}
 			if(i == 1){
-				mu.new[1] <- ifelse(tmp < (mu[2] - 1.5*sigma), tmp, mu[2]-1.5*sigma)
+				mu.new[1] <- ifelse(tmp < (mu[2] - N*sigma[1]), tmp, mu[2]-N*sigma[1])
 			}
 			if(i == L){
-				mu.new[L] <- ifelse(tmp > mu[L-1] + 1.5*sigma, tmp, mu[L-1]+1.5*sigma)
+				mu.new[L] <- ifelse(tmp > mu[L-1] + N*sigma[L], tmp, mu[L-1]+N*sigma[L])
 			}
 		}
-		pi.new <- apply(gamma, 2, mean, na.rm=TRUE)
-		pi <- pi.new
-		##dp <- abs(sum(mu - mu.new)) + abs(sum(pi.new-pi))
+		pis.new <- apply(gamma, 2, mean, na.rm=TRUE)
+		pis <- pis.new
+		##dp <- abs(sum(mu - mu.new)) + abs(sum(pis.new-pis))
 		dp <- abs(sum(mu-mu.new))
 		mu <- mu.new
+		print(mu)
 		if(dp < epsilon) break()
 	}
 	if(length(dup.index) > 0){
@@ -857,6 +872,18 @@ updateMu <- function(x, mu, sigma, is.snp, normalIndex, nUpdates=10){
 		mu <- tmp
 	}
 	return(mu)
+}
+
+tnorm <- function(x, mean, sd, lower=0, upper=1){
+       phi <- function(x, mu, sigma) dnorm(x, mu, sigma)
+       ## cdf of standard normal
+       Phi <- function(x, mu, sigma) pnorm(x, mu, sigma)
+       res <- phi(x, mean, sd)/(Phi(upper, mean, sd)-Phi(lower, mean, sd))
+       ind <- which(x < lower | x > upper)
+       if(any(ind)){
+               res[ind] <- 0
+       }
+       res
 }
 
 
@@ -884,6 +911,8 @@ viterbi3 <- function(arm, pos, chrom, LE, log.initial,
 		pos <- pos[I]
 		arm <- arm[I]
 		LE <- LE[I, ]
+		if(is(arm, "character"))
+			arm <- as.integer(as.factor(arm))
 	}
 	T <- nrow(LE)
 	qhat <- rep(0L, T)
@@ -892,7 +921,7 @@ viterbi3 <- function(arm, pos, chrom, LE, log.initial,
 	viterbiResults <- VanillaICE:::viterbi.wrapper(log.emission=LE,
 						       log.initial=log.initial,
 						       transitionPr=taus,
-						       arm=arm,
+						       arm=as.integer(as.factor(arm)),
 						       S=S,
 						       T=T,
 						       result=qhat,
@@ -1076,8 +1105,10 @@ hmmOneSample <- function(filename,
 			 states=1:6,
 			 medianWindow=5,
 			 cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
-			 prOutlier=1e-3,
-			 p.hom=0.6,
+			 prOutlierCN=0.01,
+			 prOutlierBAF=1e-3,
+			 p.hom=0.05,
+			 chromosome=1:22,
 			 ...){
 	dat <- read.bsfiles(filenames=filename,
 			    lrr.colname=lrr.colname,
@@ -1086,12 +1117,16 @@ hmmOneSample <- function(filename,
 			    sep=sep,
 			    drop=drop, colClasses=colClasses,
 			    nrows=nrow(features)+5000) ## there are about 3-4k markers not in the annotation file
+	features <- features[features[, "chrom"] %in% chromosome, ]
 	dat <- dat[features[, "index"], , ]
-	arm <- features[, "arm"]
+	arm <- as.character(features[, "arm"])
 	suffLengths <- all(table(arm) > 1000)
 	if(!suffLengths){
 		index <- as.integer(which(table(arm) < 1000))
-		arm[arm == index] <- index+1L
+		nm <- names(table(arm))[table(arm) < 1000]
+		nm2 <- nm
+		substr(nm2, 1, 1) <- "q"
+		arm[arm == nm] <- nm2
 	}
 	lrrlist <- split(dat[, 1], arm)
 	lrrlist <- lapply(lrrlist, as.matrix)
@@ -1114,7 +1149,7 @@ hmmOneSample <- function(filename,
 			 .packages="VanillaICE") %do% {
 				 bafEmission(object=object,
 					     is.snp=is.snp,
-					     prOutlier=prOutlier,
+					     prOutlier=prOutlierBAF,
 					     p.hom=p.hom, ...)
 			 }
 	emitr <- foreach(object=lrrlist,
@@ -1123,7 +1158,196 @@ hmmOneSample <- function(filename,
 			 .packages="VanillaICE") %do% {
 				 cnEmission(object=object,
 					    is.snp=is.snp,
-					    prOutlier=prOutlier,
+					    prOutlier=prOutlierCN,
+					    cnStates=cnStates,
+					    is.log=TRUE,
+					    normalIndex=3, ...)
+			 }
+	if(FALSE){
+		idlist <- split(rownames(features), arm)
+		tmp <- foreach(id=idlist) %do% any(ids %in% id)
+		ii <- which(unlist(tmp))
+		index <- match(ids, idlist[[ii]])
+		r <- lrrlist[[ii]][index, ]
+		e <- cbind(r, round(emitr[[ii]][index, 1, ], 3))
+		fd <- featureData(bsSet1)[chromosome(bsSet1)==5, ]
+		##index <- findOverlaps(featureData(bsSet)
+	}
+	emitlist <- foreach(b=emitb, r=emitr) %do% (b[, 1, ] + r[, 1, ])
+	e <- 0.5
+	pis <- rep(NA, 6)
+	pis[3] <- e
+	pis[-3] <- (1-e)/5
+	log.initial <- log(pis)
+	rdl <- foreach(arm=armlist,
+		       pos=poslist,
+		       chrom=chrlist,
+		       LE=emitlist,
+		       .packages="VanillaICE") %dopar% {
+			       viterbi3(LE=LE,
+					arm=arm,
+					pos=pos,
+					chrom=chrom,
+					log.initial=log.initial,
+					states=1:6,
+					id=basename(filename),
+					TAUP=TAUP)
+		       }
+	rd <- stackRangedData(rdl)
+	return(rd)
+}
+
+hmm3 <- function(filenames, cdfname, universe=c("hg18", "hg19", ""),
+		 lrr.colname="Log.R.Ratio",
+		 baf.colname="B.Allele",
+		 samplesPerProcess=1L,
+		 colClasses,
+		 TAUP=1e8,
+		 medianWindow=5,
+		 cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+		 prOutlierBAF=1e-3,
+		 prOutlierCN=0.01,
+		 p.hom=0.05,
+		 chromosome=1:22,
+		 ...){
+	## 2. read in annotation
+	if(universe != "")
+		universe <- match.arg(universe)
+	if(missing(colClasses))
+		colClasses <- getColClasses(filenames[1], lrr.colname=lrr.colname, baf.colname=baf.colname)
+	features <- keyOffFirstFile(filename=filenames[1], cdfname=cdfname, universe=universe, colClasses=colClasses,
+				    lrr.colname=lrr.colname, baf.colname=baf.colname, ...)
+	rd <- list()
+	if(samplesPerProcess > 1) message("Currently, files are not split to separate processes")
+	## perhaps replace using a nested foreach...
+	for(i in seq_along(filenames)){
+		rd[[i]] <- hmmOneSample(filename=filenames[i], features=features, colClasses=colClasses,
+					lrr.colname=lrr.colname, baf.colname=baf.colname,
+					TAUP=TAUP,
+					medianWindow=medianWindow,
+					cnStates=cnStates,
+					prOutlierCN=prOutlierCN,
+					prOutlierBAF=prOutlierBAF,
+					p.hom=p.hom,
+					chromosome=chromosome)
+	}
+	rdHmm <- stackRangedData(rd)
+	return(rdHmm)
+}
+
+
+hmmBeadStudioSet <- function(object,
+			     cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
+			     medianWindow=5,
+			     prOutlierCN=0.01,
+			     prOutlierBAF=1e-3,
+			     p.hom=0.05,
+			     TAUP=1e8,
+			     states=1:6, ...){
+	is.ordered <- checkOrder(object)
+	if(!is.ordered){
+		object <- chromosomePositionOrder(object)
+	}
+	na.chrom <- is.na(chromosome(object))
+	if(any(na.chrom)){
+		object <- object[!na.chrom, ]
+	}
+	arm <- .getArm(chromosome(object), position(object))
+	suffLengths <- all(table(arm) > 1000)
+	if(!suffLengths){
+		index <- as.integer(which(table(arm) < 1000))
+		arm[arm == index] <- index+1L ## its the parm that tends to be small. collapse p and q
+	}
+	armlist <- split(arm, arm)
+	lrrlist <- split(lrr(object), arm)
+	lrrlist <- lapply(lrrlist, as.matrix)
+	baflist <- split(baf(object), arm)
+	baflist <- lapply(baflist, as.matrix)
+	chrlist <- split(chromosome(object), arm)
+	poslist <- split(position(object), arm)
+	snplist <- split(isSnp(object), arm)
+	emitb <- foreach(x=baflist,
+			 is.snp=snplist,
+			 .packages="VanillaICE") %do% {
+				 bafEmission(object=x,
+					     is.snp=is.snp,
+					     prOutlier=prOutlierBAF,
+					     p.hom=p.hom, ...)
+			 }
+	emitr <- foreach(x=lrrlist,
+			 is.snp=snplist,
+			 chrom=chrlist,
+			 .packages="VanillaICE") %do% {
+				 cnEmission(object=x,
+					    is.snp=is.snp,
+					    prOutlier=prOutlierCN,
+					    cnStates=cnStates,
+					    is.log=TRUE,
+					    normalIndex=3,
+					    ...)
+			 }
+	emitlist <- foreach(b=emitb, r=emitr) %do% (b[, 1, ] + r[, 1, ])
+	e <- 0.5
+	pis <- rep(0, 6)
+	pis[3] <- e
+	pis[-3] <- (1-e)/5
+	log.initial <- log(pis)
+	rdl <- foreach(arm=armlist,
+		       pos=poslist,
+		       chrom=chrlist,
+		       LE=emitlist, .packages="VanillaICE") %dopar% {
+			       viterbi3(LE=LE,
+					arm=arm,
+					pos=pos,
+					chrom=chrom,
+					log.initial=log.initial,
+					states=1:6,
+					id=sampleNames(object),
+					TAUP=TAUP)
+		       }
+	rd <- stackRangedData(rdl)
+}
+
+hmmOligoSnpSet <- function(object,
+			   cnStates=c(0, 1, 2, 2, 3, 4),
+			   medianWindow=5,
+			   prOutlierCN=0.01,
+			   prOutlierBAF=1e-3,
+			   p.hom=0.05,
+			   TAUP=1e8,
+			   states=1:6, ...){
+	arm <- .getArm(chromosome(object), position(object))
+	lrrlist <- split(lrr(object), arm)
+	lrrlist <- lapply(lrrlist, as.matrix)
+	baflist <- split(baf(object), arm)
+	baflist <- lapply(baflist, as.matrix)
+	## this part does not change -- could be put outside the for loop
+##	chrom <- features[, "chrom"]
+##	pos <- features[, "position"]
+##	probB <- features[, "probB"]
+##	issnp <- features[, "isSnp"]
+	chrlist <- split(chromosome(object), arm)
+	poslist <- split(position(object), arm)
+##	pblist <- split(probB, arm)
+##	chrlist <- split(chrom, arm)
+##	poslist <- split(pos, arm)
+	snplist <- split(isSnp(object), arm)
+	armlist <- split(arm, arm)
+	emitb <- foreach(object=baflist,
+			 is.snp=snplist,
+			 .packages="VanillaICE") %do% {
+				 bafEmission(object=object,
+					     is.snp=is.snp,
+					     prOutlier=prOutlierBAF,
+					     p.hom=p.hom, ...)
+			 }
+	emitr <- foreach(object=lrrlist,
+			 is.snp=snplist,
+			 chrom=chrlist,
+			 .packages="VanillaICE") %do% {
+				 cnEmission(object=object,
+					    is.snp=is.snp,
+					    prOutlier=prOutlierCN,
 					    cnStates=cnStates,
 					    is.log=TRUE,
 					    normalIndex=3,
@@ -1148,56 +1372,4 @@ hmmOneSample <- function(filename,
 					TAUP=TAUP)
 		       }
 	rd <- stackRangedData(rdl)
-	return(rd)
-}
-
-hmm3 <- function(filenames, cdfname, universe=c("hg18", "hg19", ""),
-		 lrr.colname="Log.R.Ratio",
-		 baf.colname="B.Allele",
-		 samplesPerProcess=1L,
-		 colClasses,
-		 TAUP=1e8,
-		 medianWindow=5,
-		 cnStates=c(-1.5, -0.5, 0, 0, 0.4, 0.8),
-		 prOutlier=1e-3,
-		 p.hom=0.6,
-		 ...){
-	## 2. read in annotation
-	if(universe != "")
-		universe <- match.arg(universe)
-	if(missing(colClasses))
-		colClasses <- getColClasses(filenames[1], lrr.colname=lrr.colname, baf.colname=baf.colname)
-	features <- keyOffFirstFile(filename=filenames[1], cdfname=cdfname, universe=universe, colClasses=colClasses,
-				    lrr.colname=lrr.colname, baf.colname=baf.colname, ...)
-	rd <- list()
-	if(samplesPerProcess > 1) message("Currently, files are not split to separate processes")
-	## perhaps replace using a nested foreach...
-	for(i in seq_along(filenames)){
-		rd[[i]] <- hmmOneSample(filename=filenames[i], features=features, colClasses=colClasses,
-					lrr.colname=lrr.colname, baf.colname=baf.colname,
-					TAUP=TAUP,
-					medianWindow=medianWindow,
-					cnStates=cnStates,
-					prOutlier=prOutlier,
-					p.hom=p.hom)
-	}
-	rdHmm <- stackRangedData(rd)
-	return(rdHmm)
-}
-
-##---------------------------------------------------------------------------
-##
-## From MinimumDistance
-##
-##---------------------------------------------------------------------------
-tnorm <- function(x, mean, sd, lower=0, upper=1){
-	phi <- function(x, mu, sigma) dnorm(x, mu, sigma)
-	## cdf of standard normal
-	Phi <- function(x, mu, sigma) pnorm(x, mu, sigma)
-	res <- phi(x, mean, sd)/(Phi(upper, mean, sd)-Phi(lower, mean, sd))
-	ind <- which(x < lower | x > upper)
-	if(any(ind)){
-		res[ind] <- 0
-	}
-	res
 }
