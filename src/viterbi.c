@@ -249,6 +249,10 @@ void viterbi2(double *pBeta, /* emission prob */
     scalingFactorSum=scalingFactorSum+*(pDelta+nRows*j);
   }
   scalingFactor[0]=1/scalingFactorSum;
+  for(j=0; j<nCols; ++j)
+    {
+      *(pDelta + nRows*j)=scalingFactor[0]* pDelta[nRows*j];
+    }
 
   /*RS: For the backwards variable, we need a counter (k) that goes in
     the opposite direction of t.  I think it could be defined as a
@@ -347,7 +351,7 @@ void viterbi2(double *pBeta, /* emission prob */
 	     Since AA is a square matrix, that starting address can be
 	     expressed as pAA + nCols*j */
 	  for (i=0; i<nCols; ++i)
-	    {
+	    { /* eq 92a */
 	      pDeltaTempSum[i] = pAA[j * nCols + i] * pDelta[(t-1) + i * nRows];
 	    }
 	  /* Needs update */
@@ -356,22 +360,14 @@ void viterbi2(double *pBeta, /* emission prob */
 	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
 	  /* rescale pDelta */
 	  /* (Rabiner eq 91)  */
-	  scalingFactorSum=scalingFactorSum + (double *)(pDelta + j*nRows +t);
+	  scalingFactorSum=scalingFactorSum + *(pDelta + j*nRows+t);
 	}
       scalingFactor[t] = 1/scalingFactorSum;
-      double tmpC, tmp;
-      tmpC=1.0;
       for(j=0; j<nCols; ++j)
 	{
-	  for(tt=0;tt<t;++tt)
-	    {
-	      tmpC=tmpC*scalingFactor[tt];
-	    }
-	  /* reassign the rescaled value (Rabiner eq 93a)  */
-	  *(pDelta + j*nrows +t) = tmpC * (double *)(pDelta + j*nrows + t);
+	  *(pDelta + j*nRows +t) = scalingFactor[t] * pDelta[j*nRows + t];
 	}
     }
-
   /* Needs update */
   getMatrixIndexAndMaxVal( (double *)(pDelta + nRows-1), nCols, &Pstar, (int *)(pQHat + nRows-1), nRows);
   for (t=nRows-2; t>= 0; --t)
