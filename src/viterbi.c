@@ -3,9 +3,7 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
-
 #include "Rinternals.h"
-
 
 static void updateTransitionMatrix(double *pAA, const int t, const int nCols, const int NS, double *tau, double *c1, double *c2, double *c3)
 {
@@ -53,6 +51,7 @@ static void updateTransitionMatrix(double *pAA, const int t, const int nCols, co
 	    }
 	}
 }
+
 
 static void getIndexAndMaxVal(const double *pVec, const int len, double *pMaxVal, int *pMaxIdx)
 {
@@ -259,6 +258,7 @@ void viterbi2(double *pBeta, /* emission prob */
   /* *************************************************************************** */
   /*  : ASSUME pBeta is on probability scale (not log scale) */
   /*  :  changes to pDelta throughout */
+  /*  : need probability scale for reestimation formulas
   /* *************************************************************************** */
   /**  RS double *pDelta, *pAA, *pDeltaTempSum, Pstar; */
   /** double *pAA, *pDeltaTempSum, Pstar, *tp; */
@@ -312,6 +312,7 @@ void viterbi2(double *pBeta, /* emission prob */
 	 /* transition probability at time k (for backwards var)
       /* pAA_k = getTransitionProbabilityMatrix(nCols, NS, tau, k, c1, pAA, offset, c2, c3) */
       updateTransitionMatrix(pAA, t, nCols, NS, tau, c1, c2, c3);
+      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
       /*      if(t == 1)
 	{
 	  printf(*(pAA2));
@@ -322,6 +323,8 @@ void viterbi2(double *pBeta, /* emission prob */
 	{
 	  double maxDeltaTempSum;
 	  int maxDeltaSumIdx = 0;
+	  double alphaSum = 0;
+	  double backSum = 0;
 	  /* Sum the jth column of AA and the (t-1)th row of delta.
              The jth column of AA occupies
 	     consecutive memory locations starting at the memory location pAA + nrow(AA)*j.
@@ -329,11 +332,19 @@ void viterbi2(double *pBeta, /* emission prob */
 	     expressed as pAA + nCols*j */
 	  for (i=0; i<nCols; ++i)
 	    { /* eq 92a */
+	      /* jth column of pAA */
+	      /* t-1 row of pAlpha */
+	      /* j*nCols + i = 'i+1 element of j+1 column' */
+	      /* iterating over i, this is the j+1 column */
 	      pDeltaTempSum[i] = pAA[j * nCols + i] * pAlpha[(t-1) + i * nRows];
-	      /* first Row of backwards variable is T */
+	      /* first Row of backwards variable is time T */
 	      /* so using (t-1) should be the appropriate index */
-	      /* We need to do the calculation over a column */
-	      pBackTempSum[i] = pAA2[i * nCols + j] * pBack[(t-1) + i * nRows] * *(pBeta + i*nRows + k+1);
+	      /* ith row of pAA2 */
+	      /* i*nCols+j === i+1 element of the j+1 row */
+	      /* this is the j=1 row */
+	      pBackTempSum[i] = pAA2[i * nCols + j] * pBack[(t-1) + i * nRows] * *(pBeta + i*nRows + k);
+	      alphaSum=alphaSum+pDeltaTempSum[i];
+	      backSum=backSum+pBackTempSum[i];
 	    }
 	  /* Needs update */
 	  getIndexAndMaxVal( (double *)(pDeltaTempSum), nCols, &maxDeltaTempSum, &maxDeltaSumIdx);
@@ -341,8 +352,8 @@ void viterbi2(double *pBeta, /* emission prob */
 	  /* eq 33a */
 	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
 	  /* eq 20 */
-	  *(pAlpha + j*nRows + t) = *(pDeltaTempSum) * *(pBeta + j*nRows + t);
-	  *(pBack + j*nRows + t) = *(pBackTempSum);
+	  *(pAlpha + j*nRows + t) = alphaSum * *(pBeta + j*nRows + t);
+	  *(pBack + j*nRows + t) = backSum;
 	  /* rescale pDelta */
 	  /* (Rabiner eq 91)  */
 	  scalingFactorSum=scalingFactorSum + *(pAlpha + j*nRows+t);
@@ -357,11 +368,6 @@ void viterbi2(double *pBeta, /* emission prob */
 	  *(pBack + j*nRows +t) = scalingFactorB[t] * pBack[j*nRows +t];
 	}
     }
-  for(k = nRows-1, k>0; --k){
-      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
-
-  }
-  /* Needs update */
   getMatrixIndexAndMaxVal( (double *)(pDelta + nRows-1), nCols, &Pstar, (int *)(pQHat + nRows-1), nRows);
   for (t=nRows-2; t>= 0; --t)
     {
