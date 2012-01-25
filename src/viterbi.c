@@ -6,6 +6,54 @@
 
 #include "Rinternals.h"
 
+
+static void updateTransitionMatrix(double *pAA, const int t, const int nCols, const int NS, double *tau, double *c1, double *c2, double *c3)
+{
+  int i, j;
+      for (i=0; i<nCols; ++i)
+	{
+	  for (j=0; j<nCols; ++j)
+	    {
+	      int offset;
+	      offset = j * nCols + i;
+	      /* if (i == j)*/
+	      if(i == NS)
+		{
+		  if(i == j)  /* probability of staying in the normal state */
+		    {
+		      *(pAA + offset) = 1 - ((1-tau[t-1]) * (nCols - 1) * *c1);
+		      /* printf(i, j); */
+		      /* probability of staying in the same state */
+		    }
+		  else /* probability of leaving normal state */
+		    {
+		      *(pAA + offset) = *c1 * (1-tau[t-1]);
+		    }
+		}
+	      else   /* transitioning from an altered state */
+		{
+		  if(i == j)  /* staying in the same altered state */
+		    {
+		      /* c2 = scalar for transitioning from normal to altered state */
+		      *(pAA + offset) = 1 - (1 - tau[t-1]) * (*c2 + (nCols - 2) * *c3);
+		    }
+		  else /* leaving altered state */
+		    {
+		      if(j == NS) /* going back to normal state */
+			{
+			  *(pAA + offset) = *c2 * (1 - tau[t-1]);
+			}
+		      else  /* going to another altered state */
+			{
+			  *(pAA + offset) = *c3 * (1 - tau[t-1]);
+			}
+		    }
+		}
+	      *(pAA + offset) =  *(pAA + offset);
+	    }
+	}
+}
+
 static void getIndexAndMaxVal(const double *pVec, const int len, double *pMaxVal, int *pMaxIdx)
 {
   int i;
@@ -188,13 +236,6 @@ void viterbi(double *pBeta, double *initialP, double *tau,
 }
 
 
-static void getTransitionProbMatrix()
-{
-
-
-}
-
-
 
 void viterbi2(double *pBeta, /* emission prob */
 	      double *initialP,  /* initial state prob */
@@ -203,14 +244,17 @@ void viterbi2(double *pBeta, /* emission prob */
 	      int *S,  /* number states */
 	      int *T,  /* number markers */
 	      int *pQHat, /* state path */
-	      double *pDelta, /*forward variable */
+	      double *pDelta, /* for viterbi */
+	      double *pAlpha, /* forward variable */
 	      double *pBack, /* backward variable */
 	      double *c1,
 	      double *c2,
 	      double *c3,
 	      int *normalState,
 	      double *pAA,   /* transition prob matrix*/
-	      double *scalingFactor)
+	      double *scalingFactor,
+	      double *scalingFactorB,
+	      int *computeBakVar)
 {
   /* *************************************************************************** */
   /*  : ASSUME pBeta is on probability scale (not log scale) */
@@ -223,25 +267,19 @@ void viterbi2(double *pBeta, /* emission prob */
   int i,j,t,tt;
   int nRows, nCols, *pPsi;
   int NS;
-
+  double *pAA2;
 
   NS = *normalState - 1;
   nRows = *T;
   nCols = *S;
 
-  /** RS
-      pDelta = (double *)R_alloc(sizeof(double), nRows * nCols); */
   pPsi = (int *)R_alloc(sizeof(int), nRows * nCols);
-  /** transition probability matrix */
-  /** pAA = (double *)R_alloc(sizeof(double), nCols * nCols); */
   pDeltaTempSum = (double *)R_alloc(sizeof(double), nCols);
   pBackTempSum = (double *)R_alloc(sizeof(double), nCols);
+  pAA2 = (double *)R_alloc(sizeof(double), nCols * nCols);
 
-  /** what is this notation? *(pDelta + nrows*j) C uses vectors and
-      not matrices.  so the Nth row in pDelta is set to initialP + the
-      emission probability for the Nth row*/
-  double scalingFactorSum;
-  scalingFactorSum=0;
+  double scalingFactorSum, scalingFactorSumB;
+  scalingFactorSum=0; scalingFactorSumB=0;
   for (j=0; j<nCols; ++j)
   {
     *(pDelta + nRows*j) = initialP[j] * *(pBeta + nRows*j);
@@ -252,95 +290,34 @@ void viterbi2(double *pBeta, /* emission prob */
   for(j=0; j<nCols; ++j)
     {
       *(pDelta + nRows*j)=scalingFactor[0]* pDelta[nRows*j];
+      *(pAlpha + nRows*j) = *(pDelta + nRows*j);
+      *(pBack + nRows*j) = 1;
     }
-
   /*RS: For the backwards variable, we need a counter (k) that goes in
     the opposite direction of t.  I think it could be defined as a
     function of t.  k should go from T-1 to 1.
 
     t: 1, ... T-1
     k: T-1, ..., 1
-
   */
-
-    int k;
-    for (t=1; t<nRows; ++t) {
+  int k;
+  for (t=1; t<nRows; ++t)
+    {
       k = nRows-t;
-      /* Assume that we're doing this arm by arm so that the following
-	 is not necessary */
-      /*      if(*(pArm + k) != *(pArm + k-1)){
-	{
-	  for (j=0; j<nCols; ++j)
-	    {
-	      *(pBack + j*nRows + k) = 0;
-	    }
-	  continue;
-	}
-	}*/
-      /* Same here:  unecessary if we fit arm by arm*/
-      /*if(*(pArm + t) != *(pArm + t - 1))
-	{
-	  for (j=0; j<nCols; ++j)
-	    {
-	      *(pDelta + j*nRows + t) = initialP[j] + *(pBeta + j*nRows + t);
-	      *(pPsi + j*nRows + t) = 0;
-	    }
-	  continue;
-	  }*/
       /* construct transition probability matrix at marker t */
-
-	/* RS: the following nexted for loop could be removed after we have a 'getTransitionProbabilityMatrix' function*/
+      /* RS: the following nexted for loop could be removed after we have a 'getTransitionProbabilityMatrix' function*/
       /* something like:
 	 /* transition probability at time t
       /* pAA_t = getTransitionProbabilityMatrix(nCols, NS, tau, t, c1, pAA, offset, c2, c3) */
 	 /* transition probability at time k (for backwards var)
       /* pAA_k = getTransitionProbabilityMatrix(nCols, NS, tau, k, c1, pAA, offset, c2, c3) */
-      for (i=0; i<nCols; ++i)
+      updateTransitionMatrix(pAA, t, nCols, NS, tau, c1, c2, c3);
+      /*      if(t == 1)
 	{
-	  for (j=0; j<nCols; ++j)
-	    {
-	      int offset;
-	      offset = j * nCols + i;
-	      /* if (i == j)*/
-	      if(i == NS)
-		{
-		  if(i == j)  /* probability of staying in the normal state */
-		    {
-		      *(pAA + offset) = 1 - ((1-tau[t-1]) * (nCols - 1) * *c1);
-		      /* printf(i, j); */
-		      /* probability of staying in the same state */
-		      /* *(pAA + offset) = tau[t-1]; */
-		    }
-		  else /* probability of leaving normal state */
-		    {
-		      *(pAA + offset) = *c1 * (1-tau[t-1]);
-		    }
-		}
-	      else   /* transitioning from an altered state */
-		{
-		  if(i == j)  /* staying in the same altered state */
-		    {
-		      /* c2 = scalar for transitioning from normal to altered state */
-		      *(pAA + offset) = 1 - (1 - tau[t-1]) * (*c2 + (nCols - 2) * *c3);
-		      /* *(pAA + offset) = (1-tau[t-1])/(nCols-1); */
-		    }
-		  else /* leaving altered state */
-		    {
-		      if(j == NS) /* going back to normal state */
-			{
-			  *(pAA + offset) = *c2 * (1 - tau[t-1]);
-			}
-		      else  /* going to another altered state */
-			{
-			  *(pAA + offset) = *c3 * (1 - tau[t-1]);
-			}
-		    }
-		}
-	      /* *(pAA + offset) = log ( *(pAA + offset) * *(tau_scale + offset) );*/
-	      *(pAA + offset) =  *(pAA + offset);
-	    }
-	}
+	  printf(*(pAA2));
+	  }*/
       scalingFactorSum=0.0;
+      scalingFactorSumB=0.0;
       for (j=0; j<nCols; ++j)
 	{
 	  double maxDeltaTempSum;
@@ -352,22 +329,38 @@ void viterbi2(double *pBeta, /* emission prob */
 	     expressed as pAA + nCols*j */
 	  for (i=0; i<nCols; ++i)
 	    { /* eq 92a */
-	      pDeltaTempSum[i] = pAA[j * nCols + i] * pDelta[(t-1) + i * nRows];
+	      pDeltaTempSum[i] = pAA[j * nCols + i] * pAlpha[(t-1) + i * nRows];
+	      /* first Row of backwards variable is T */
+	      /* so using (t-1) should be the appropriate index */
+	      /* We need to do the calculation over a column */
+	      pBackTempSum[i] = pAA2[i * nCols + j] * pBack[(t-1) + i * nRows] * *(pBeta + i*nRows + k+1);
 	    }
 	  /* Needs update */
 	  getIndexAndMaxVal( (double *)(pDeltaTempSum), nCols, &maxDeltaTempSum, &maxDeltaSumIdx);
 	  *(pPsi + j * nRows  + t) = maxDeltaSumIdx;
+	  /* eq 33a */
 	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
+	  /* eq 20 */
+	  *(pAlpha + j*nRows + t) = *(pDeltaTempSum) * *(pBeta + j*nRows + t);
+	  *(pBack + j*nRows + t) = *(pBackTempSum);
 	  /* rescale pDelta */
 	  /* (Rabiner eq 91)  */
-	  scalingFactorSum=scalingFactorSum + *(pDelta + j*nRows+t);
+	  scalingFactorSum=scalingFactorSum + *(pAlpha + j*nRows+t);
+	  scalingFactorSumB=scalingFactorSumB + *(pBack + j*nRows + t);
 	}
       scalingFactor[t] = 1/scalingFactorSum;
+      scalingFactorB[t] = 1/scalingFactorSumB;
       for(j=0; j<nCols; ++j)
 	{
 	  *(pDelta + j*nRows +t) = scalingFactor[t] * pDelta[j*nRows + t];
+	  *(pAlpha + j*nRows +t) = scalingFactor[t] * pAlpha[j*nRows + t];
+	  *(pBack + j*nRows +t) = scalingFactorB[t] * pBack[j*nRows +t];
 	}
     }
+  for(k = nRows-1, k>0; --k){
+      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
+
+  }
   /* Needs update */
   getMatrixIndexAndMaxVal( (double *)(pDelta + nRows-1), nCols, &Pstar, (int *)(pQHat + nRows-1), nRows);
   for (t=nRows-2; t>= 0; --t)
