@@ -1380,3 +1380,17 @@ hmmOligoSnpSet <- function(object,
 		       }
 	rd <- stackRangedData(rdl)
 }
+
+constrainMu <- function(mu, is.log){
+	if(is.log){
+		mu[1] <- ifelse(mu[1] > -1, -1, mu[1])
+		mu[2] <- ifelse(mu[2] > -0.2, -0.2, mu[2])
+		mu[3] <- ifelse(mu[3] < -0.1, -0.1, mu[3])
+		mu[3] <- ifelse(mu[3] > -0.1, 0.1, mu[3])
+		mu[4] <- ifelse(mu[4] < -0.1, -0.1, mu[4])
+		mu[4] <- ifelse(mu[4] > -0.1, 0.1, mu[4])
+		mu[5] <- ifelse(mu[5] < 0.2, 0.2, mu[5])
+		mu[6] <- iflese(mu[6] < 0.5, 0.5, mu[6])
+		return(mu)
+	}
+}
