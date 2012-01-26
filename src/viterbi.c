@@ -303,51 +303,19 @@ void viterbi2(double *pBeta, /* emission prob */
   for (t=1; t<nRows; ++t)
     {
       k = nRows-t-1;  /* when t=T-1, k= T-(T-1)-1=0 */
-      /* construct transition probability matrix at marker t */
-      /* RS: the following nexted for loop could be removed after we have a 'getTransitionProbabilityMatrix' function*/
-      /* something like:
-	 /* transition probability at time t
-      /* pAA_t = getTransitionProbabilityMatrix(nCols, NS, tau, t, c1, pAA, offset, c2, c3) */
-	 /* transition probability at time k (for backwards var)
-      /* pAA_k = getTransitionProbabilityMatrix(nCols, NS, tau, k, c1, pAA, offset, c2, c3) */
       updateTransitionMatrix(pAA, t, nCols, NS, tau, c1, c2, c3);
-      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
-      /*      if(t == 1)
-	{
-	  printf(*(pAA2));
-	  }*/
       scalingFactorSum=0.0;
-      scalingFactorSumB=0.0;
       for (j=0; j<nCols; ++j)
 	{
 	  double maxDeltaTempSum;
 	  int maxDeltaSumIdx = 0;
 	  double alphaSum = 0;
-	  double backSum = 0;
-	  /* Sum the jth column of AA and the (t-1)th row of delta.
-             The jth column of AA occupies
-	     consecutive memory locations starting at the memory location pAA + nrow(AA)*j.
-	     Since AA is a square matrix, that starting address can be
-	     expressed as pAA + nCols*j */
 	  for (i=0; i<nCols; ++i)
 	    { /* eq 92a */
-	      /* want to assign the sum of the j+1 column (integrating out row i)
-		 to the j+1 element of the forward Var*/
-	      /* jth column of pAA */
-	      /* t-1 row of pAlpha */
-	      /* j*nCols + i = 'i+1 element of j+1 column' */
-	      /* iterating over i, this is the j+1 column */
+	      /* want to integrate out column j: sum_i aij */
 	      /* we later assign this prob to element j+1 of the t+1 row of the forward variable */
 	      pDeltaTempSum[i] = pAA[j * nCols + i] * pAlpha[(t-1) + i * nRows];
-	      /* want to assign the sum of the i+1 row (integrating out column j+1)
-		 to the i+1 element of the forward Var*/
-	      /* ith row of pAA2 */
-	      /* i*nCols+j === i+1 element of the j+1 row */
-	      /* iterating over i, this is the j+1 row */
-	      /* we later assign this prob to element j+1 of the k+1 row of the backwards variable */
-	      pBackTempSum[i] = pAA2[i * nCols + j] * pBack[i*nRows + k+1] * *(pBeta + i*nRows + k);
 	      alphaSum=alphaSum+pDeltaTempSum[i];
-	      backSum=backSum+pBackTempSum[i];
 	    }
 	  /* Needs update */
 	  getIndexAndMaxVal( (double *)(pDeltaTempSum), nCols, &maxDeltaTempSum, &maxDeltaSumIdx);
@@ -356,30 +324,44 @@ void viterbi2(double *pBeta, /* emission prob */
 	  *(pDelta + j*nRows + t) = maxDeltaTempSum * *(pBeta + j*nRows + t);
 	  /* eq 20 */
 	  *(pAlpha + j*nRows + t) = alphaSum * *(pBeta + j*nRows + t);
-	  *(pBack + j*nRows + k) = backSum;
 	  /* rescale pDelta */
 	  /* (Rabiner eq 91)  */
 	  scalingFactorSum=scalingFactorSum + *(pAlpha + j*nRows+t);
-	  scalingFactorSumB=scalingFactorSumB + *(pBack + j*nRows + k);
 	}
       scalingFactor[t] = 1/scalingFactorSum;
-      scalingFactorB[k] = 1/scalingFactorSumB;
       for(j=0; j<nCols; ++j)
 	{
 	  *(pDelta + j*nRows +t) = scalingFactor[t] * pDelta[j*nRows + t];
 	  *(pAlpha + j*nRows +t) = scalingFactor[t] * pAlpha[j*nRows + t];
+	}
+      /* backwards variable */
+      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
+      scalingFactorSumB=0.0;
+      for(i=0;i<nCols;++i)
+	{
+	  double backSum = 0;
+	  for(j=0;j<nCols;++j)
+	    {
+	      /* want to integrate out row i: sum_j aij */
+	      pBackTempSum[j] = pAA2[j * nCols + i] * pBack[j*nRows + k+1] * *(pBeta + i*nRows + k);
+	      backSum=backSum+pBackTempSum[j];
+	    }
+	  /* assign to element i of row k */
+	  *(pBack + i*nRows + k) = backSum;
+	  scalingFactorSumB=scalingFactorSumB + *(pBack + i*nRows + k);
+	}
+      scalingFactorB[k] = 1/scalingFactorSumB;
+      for(j=0;j<nCols;++j)
+	{
 	  *(pBack + j*nRows +k) = scalingFactorB[k] * pBack[j*nRows +k];
 	}
     }
   getMatrixIndexAndMaxVal( (double *)(pDelta + nRows-1), nCols, &Pstar, (int *)(pQHat + nRows-1), nRows);
   for (t=nRows-2; t>= 0; --t)
     {
-      /*if (strcmp(*(ppArm + t), *(ppArm + t + 1)) != 0)*/
       if(*(pArm + t) != *(pArm + t + 1))
 	{
 	  double maxVal;
-
-	  /* Needs update */
 	  getMatrixIndexAndMaxVal((double *)(pDelta + t), nCols, &maxVal, &pQHat[t], nRows);
 	}
       else
@@ -387,11 +369,11 @@ void viterbi2(double *pBeta, /* emission prob */
 	  pQHat[t] = *(pPsi + pQHat[t+1] * nRows + (t+1));
 	}
     }
-
   /* Array indices in R are 1-based so add one to these values. */
   for (i=0; i<nRows; ++i) {
     pQHat[i] += 1;
     if (i > 0)
       for (j=0; j<nCols; ++j)
-        pPsi[j*nRows + i] += 1;}
+        pPsi[j*nRows + i] += 1;
+  }
 }
