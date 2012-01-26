@@ -47,7 +47,6 @@ static void updateTransitionMatrix(double *pAA, const int t, const int nCols, co
 			}
 		    }
 		}
-	      *(pAA + offset) =  *(pAA + offset);
 	    }
 	}
 }
