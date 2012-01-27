@@ -335,7 +335,8 @@ void viterbi2(double *pBeta, /* emission prob */
 	  *(pAlpha + j*nRows +t) = scalingFactor[t] * pAlpha[j*nRows + t];
 	}
       /* backwards variable */
-      updateTransitionMatrix(pAA2, k, nCols, NS, tau, c1, c2, c3);
+      /* if k is zero, this is undefined */
+      updateTransitionMatrix(pAA2, k+1, nCols, NS, tau, c1, c2, c3);
       scalingFactorSumB=0.0;
       for(i=0;i<nCols;++i)
 	{
